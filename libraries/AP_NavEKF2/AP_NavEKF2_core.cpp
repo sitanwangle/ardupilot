@@ -151,6 +151,7 @@ void NavEKF2_core::InitialiseVariables()
     lastPreAlignGpsCheckTime_ms = imuSampleTime_ms;
     lastPosReset_ms = 0;
     lastVelReset_ms = 0;
+    specForceFuseTime_ms = imuSampleTime_ms;
 
     // initialise other variables
     gpsNoiseScaler = 1.0f;
@@ -246,6 +247,7 @@ void NavEKF2_core::InitialiseVariables()
     optFlowFusionDelayed = false;
     airSpdFusionDelayed = false;
     sideSlipFusionDelayed = false;
+    specificForceFusionDelayed = false;
     magFuseTiltInhibit = false;
     posResetNE.zero();
     velResetNE.zero();
@@ -267,6 +269,7 @@ void NavEKF2_core::InitialiseVariables()
     storedRange.reset();
     storedSpecForce.reset();
     storedOutput.reset();
+    copterInFlight = false;
 }
 
 // Initialise the states from accelerometer and magnetometer data (if present)

@@ -880,7 +880,19 @@ private:
     uint32_t touchdownExpectedSet_ms; // system time at which expectGndEffectTouchdown was set
     float meaHgtAtTakeOff;            // height measured at commencement of takeoff
 
-    // flags indicating severw numerical errors in innovation variance calculation for different fusion operations
+    // Used by multi rotor vehicle drag model
+    bool specificForceFusionDelayed;    // true when the fusion of specific force measurements has been delayed
+    float accX_FIR_filt;                // X acceleration filtered using a finite impulse response filter - used for multirotor aerodynamic drag measurement
+    float accY_FIR_filt;                // X acceleration filtered using a finite impulse response filter - used for multirotor aerodynamic drag measurement
+    uint32_t specForceFuseTime_ms;      // last time a specific force measurement was fused
+    bool useMultiRotorDragModel;        // true if we are using a multi rotor drag model to improve dead reckoning
+    bool copterInFlight;                // true when the copter has commenced flying
+    float delVelSumTime;                // time interval over which delta velocities have been summed
+    float delVelSumX;                   // sum of X body axis delta velocity measurements
+    float delVelSumY;                   // sum of Y body axis delta velocity measurements
+    specForce_elements specForceDataNew;        // Specific force observations at the current time horizon
+    specForce_elements specForceDataDelayed;    // Specific force observations at the fusion time horizon
+
     struct {
         bool bad_xmag:1;
         bool bad_ymag:1;
