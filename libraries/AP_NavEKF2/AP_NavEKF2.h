@@ -311,6 +311,8 @@ private:
     AP_Int8 _gpsCheck;              // Bitmask controlling which preflight GPS checks are bypassed
     AP_Int8 _imuMask;               // Bitmask of IMUs to instantiate EKF2 for
     AP_Int16 _gpsCheckScaler;       // Percentage increase to be applied to GPS pre-flight accuracy and drift thresholds
+    AP_Float _maxSpdX;              // Maximum speed that the multi-rotor will reach at a =-25 degree pitch angle
+    AP_Float _maxSpdY;              // Maximum speed that the multi-rotor will reach at a =-25 degree roll angle
 
     // Tuning parameters
     const float gpsNEVelVarAccScale;    // Scale factor applied to NE velocity measurement variance due to manoeuvre acceleration

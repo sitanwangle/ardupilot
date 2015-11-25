@@ -419,6 +419,18 @@ const AP_Param::GroupInfo NavEKF2::var_info[] = {
     // @Units: %
     AP_GROUPINFO("CHECK_SCALE", 34, NavEKF2, _gpsCheckScaler, CHECK_SCALER_DEFAULT),
 
+    // @Param: VMAX_X
+    // @DisplayName: Multi rotor max airspeed fore/aft
+    // @Description: Set to the steady state airspeed that is achieved at +-25 degrees pitch. Set to positive value to enable use.
+    // @User: Advanced
+    AP_GROUPINFO("VMAX_X",    35, NavEKF2, _maxSpdX, 0.0f),
+
+    // @Param: VMAX_Y
+    // @DisplayName: Multi rotor max airspeed left/right
+    // @Description: Set to the steady state airspeed that is achieved at +-25 degrees roll. Set to positive value to enable use.
+    // @User: Advanced
+    AP_GROUPINFO("VMAX_Y",    36, NavEKF2, _maxSpdY, 0.0f),
+
     AP_GROUPEND
 };
 
