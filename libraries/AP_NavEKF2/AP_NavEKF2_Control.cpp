@@ -45,8 +45,19 @@ void NavEKF2_core::controlFilterModes()
 // avoid unnecessary operations
 void NavEKF2_core::setWindMagStateLearningMode()
 {
+    // Determine if we should be using the multirotor drag observation model
+    if (inFlight && !copterInFlight && ((stateStruct.position.z  - posDownAtTakeoff) < -1.5f) && !assume_zero_sideslip()) {
+        copterInFlight = true;
+        // Reset the wind state variances
+        P[22][22] = 1.0f;
+        P[23][23] = 1.0f;
+    } else if (onGround) {
+        copterInFlight = false;
+    }
+    useMultiRotorDragModel = frontend->_maxSpdX > 1e-9f && frontend->_maxSpdY > 1e-9f && copterInFlight;
+
     // If we are on ground, or in constant position mode, or don't have the right vehicle and sensing to estimate wind, inhibit wind states
-    inhibitWindStates = ((!useAirspeed() && !assume_zero_sideslip()) || onGround || (PV_AidingMode == AID_NONE));
+    inhibitWindStates = ((!useAirspeed() && !assume_zero_sideslip() && !useMultiRotorDragModel) || onGround || (PV_AidingMode == AID_NONE));
 
     // determine if the vehicle is manoevring
     if (accNavMagHoriz > 0.5f) {
@@ -85,6 +96,7 @@ void NavEKF2_core::setWindMagStateLearningMode()
     } else {
         stateIndexLim = 23;
     }
+
 }
 
 // Set inertial navigation aiding mode

@@ -465,6 +465,11 @@ void NavEKF2_core::UpdateFilter(bool predict)
         SelectBetaFusion();
     }
 
+    // fusion of multirotor accel measurements using a drag model for wind estimation
+    if (useMultiRotorDragModel && storedSpecForce.recall(specForceDataDelayed,imuDataDelayed.time_ms)) {
+        fuseAccelXY();
+    }
+
     // Wind output forward from the fusion to output time horizon
     calcOutputStatesFast();
 
@@ -533,6 +538,11 @@ void NavEKF2_core::UpdateStrapdownEquationsNED()
 
     // limit states to protect against divergence
     ConstrainStates();
+
+    // filter accel data using a FIR running average for use in drag estimation
+    if (useMultiRotorDragModel) {
+        filterDragAccel();
+    }
 }
 
 /*
