@@ -893,6 +893,10 @@ private:
     specForce_elements specForceDataNew;        // Specific force observations at the current time horizon
     specForce_elements specForceDataDelayed;    // Specific force observations at the fusion time horizon
 
+    // average the X and Y acceleraton measurements and output the average every 140msec
+    // used to enable estimation of airspeed in multi-rotors via aero drag estimate
+    void filterDragAccel(void);
+
     struct {
         bool bad_xmag:1;
         bool bad_ymag:1;

@@ -571,4 +571,37 @@ void NavEKF2_core::readAirSpdData()
     }
 }
 
+/********************************************************
+*                Specific Force Measurements            *
+********************************************************/
+
+// average the X and Y acceleraton measurements and output the average every 140msec
+// used to enable estimation of airspeed in multi-rotors via aero drag estimate
+void NavEKF2_core::filterDragAccel(void)
+{
+    if (imuSampleTime_ms - specForceFuseTime_ms > 140 && delVelSumTime > 0.0f) {
+        // finalise the averaged accelerations and declare data ready
+        accX_FIR_filt = delVelSumX / delVelSumTime;
+        accY_FIR_filt = delVelSumY / delVelSumTime;
+        // zero the filter states to restart the averaging
+        delVelSumX = 0.0f;
+        delVelSumY = 0.0f;
+        delVelSumTime = 0.0f;
+        // reset the timer
+        specForceFuseTime_ms = imuSampleTime_ms;
+        // effective measurement time is at centre of FIR window
+        specForceDataNew.time_ms = imuSampleTime_ms - 70;
+        // Correct for the average intersampling delay due to the filter update rate
+        specForceDataNew.time_ms -= localFilterTimeStep_ms/2;
+        // Save data to buffer
+        specForceDataNew.accelXY.x = accX_FIR_filt;
+        specForceDataNew.accelXY.y = accY_FIR_filt;
+        storedSpecForce.push(specForceDataNew);
+    } else {
+        delVelSumX += imuDataNew.delVel.x;
+        delVelSumY += imuDataNew.delVel.y;
+        delVelSumTime += imuDataNew.delVelDT;
+    }
+}
+
 #endif // HAL_CPU_CLASS
