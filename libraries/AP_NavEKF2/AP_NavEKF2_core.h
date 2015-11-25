@@ -897,6 +897,10 @@ private:
     // used to enable estimation of airspeed in multi-rotors via aero drag estimate
     void filterDragAccel(void);
 
+    // Fuse X and Y accelerometer measurements to estimate wind and constrain dead-reckoning drift in multirotors
+    void fuseAccelXY();
+
+    // flags indicating severe numerical errors in innovation variance calculation for different fusion operations
     struct {
         bool bad_xmag:1;
         bool bad_ymag:1;
