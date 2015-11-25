@@ -97,6 +97,9 @@ bool NavEKF2_core::setup_core(NavEKF2 *_frontend, uint8_t _imu_index, uint8_t _c
     if(!storedRange.init(OBS_BUFFER_LENGTH)) {
         return false;
     }
+    if(!storedSpecForce.init(OBS_BUFFER_LENGTH)) {
+        return false;
+    }
     if(!storedIMU.init(imu_buffer_length)) {
         return false;
     }
@@ -262,6 +265,7 @@ void NavEKF2_core::InitialiseVariables()
     storedBaro.reset();
     storedTAS.reset();
     storedRange.reset();
+    storedSpecForce.reset();
     storedOutput.reset();
 }
 

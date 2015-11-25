@@ -384,6 +384,11 @@ private:
         uint32_t    time_ms;        // 4
     };
 
+    struct specForce_elements {
+        Vector2f    accelXY;    // 0..1
+        uint32_t    time_ms;    // 2
+    };
+
     // update the quaternion, velocity and position states using IMU measurements
     void UpdateStrapdownEquationsNED();
 
@@ -644,6 +649,7 @@ private:
     obs_ring_buffer_t<baro_elements> storedBaro;    // Baro data buffer
     obs_ring_buffer_t<tas_elements> storedTAS;      // TAS data buffer
     obs_ring_buffer_t<range_elements> storedRange;
+    obs_ring_buffer_t<specForce_elements> storedSpecForce; // Specific force data buffer
     imu_ring_buffer_t<output_elements> storedOutput;// output state buffer
     Vector3f correctedDelAng;       // delta angles about the xyz body axes corrected for errors (rad)
     Quaternion correctedDelAngQuat; // quaternion representation of correctedDelAng
