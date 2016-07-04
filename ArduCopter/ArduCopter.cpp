@@ -259,6 +259,10 @@ void Copter::fast_loop()
     // send outputs to the motors library
     motors_output();
 
+    // drive augmented yaw authority servo
+    float temp = 1000.0f * motors.get_yaw();
+    RC_Channel_aux::set_servo_out_for(RC_Channel_aux::k_demanded_yaw_rate,(int)temp);
+
     // Inertial Nav
     // --------------------
     read_inertia();
