@@ -147,7 +147,7 @@ void AP_MotorsMatrix::output_armed_stabilizing()
     // apply voltage and air pressure compensation
     roll_thrust = _roll_in * get_compensation_gain();
     pitch_thrust = _pitch_in * get_compensation_gain();
-    yaw_thrust = _yaw_in * get_compensation_gain();
+    yaw_thrust = _yaw_in * get_compensation_gain() * _gain_yaw;
     throttle_thrust = get_throttle() * get_compensation_gain();
 
     // sanity check throttle is above zero and below current limited throttle

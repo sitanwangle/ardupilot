@@ -175,6 +175,13 @@ const AP_Param::GroupInfo AP_MotorsMulticopter::var_info[] = {
 
     // 38 RESERVED for BAT_POW_MAX
     
+    // @Param: GAIN_YAW
+    // @DisplayName: Yaw control gain
+    // @Description: Scaling applied between the yaw demand from the control loops and the yaw demand used by the motor mixer. Allows a reduction in motor mixer yaw if some form of auxiliary yaw control (eg vanes) is being used.
+    // @Range: 0.0 1.0
+    // @User: Advanced
+    AP_GROUPINFO("GAIN_YAW", 37, AP_MotorsMulticopter, _gain_yaw, 1.0f),
+
     AP_GROUPEND
 };
 
