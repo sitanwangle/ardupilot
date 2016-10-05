@@ -11,7 +11,8 @@
 #define AP_MOTORS_DEFAULT_MID_THROTTLE  500
 
 #define AP_MOTORS_SPIN_WHEN_ARMED       70      // spin motors at this PWM value when armed
-#define AP_MOTORS_YAW_HEADROOM_DEFAULT  200
+#define AP_MOTORS_YAW_HEADROOM_DEFAULT  200     // Sets a guaranteed minimum PWM delta that the yaw control can access
+#define AP_MOTORS_YAW_LIMIT_DEFAULT     1.0f    // Sets the maximum amount of change in PWM that the yaw controller is allowed to produce
 #define AP_MOTORS_THST_EXPO_DEFAULT     0.65f   // set to 0 for linear and 1 for second order approximation
 #define AP_MOTORS_THST_HOVER_DEFAULT    0.5f    // the estimated hover throttle, 0 ~ 1
 #define AP_MOTORS_THST_HOVER_TC         10.0f   // time constant used to update estimated hover throttle, 0 ~ 1
@@ -162,6 +163,7 @@ protected:
     AP_Float            _throttle_hover;        // estimated throttle required to hover throttle in the range 0 ~ 1
     AP_Int8             _throttle_hover_learn;  // enable/disabled hover thrust learning
     AP_Float            _gain_yaw;              // scales the demanded yaw from the control loops
+    AP_Float            _yaw_limit;             // sets a limit on the ESC PWM range that the yaw control can access in a range from 0.0 (no yaw control) to 1.0 (yaw can acess the full PWM range)
 
     // motor output variables
     bool                motor_enabled[AP_MOTORS_MAX_NUM_MOTORS];    // true if motor is enabled
