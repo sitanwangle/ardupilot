@@ -491,6 +491,15 @@ const AP_Param::GroupInfo NavEKF2::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("TERR_GRAD", 43, NavEKF2, _terrGradMax, 0.1f),
 
+    // @Param: RNG_USE_SPD
+    // @DisplayName: Range finder max ground speed
+    // @Description: The range finder will not be used as the primary height source when the horizontal ground speed is greater than this value.
+    // @Range: 2.0 6.0
+    // @Increment: 0.5
+    // @User: Advanced
+    // @Units: m
+    AP_GROUPINFO("RNG_USE_SPD", 44, NavEKF2, _useRngSwSpd, 2.0f),
+
     AP_GROUPEND
 };
 
