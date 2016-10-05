@@ -172,6 +172,9 @@ void AP_MotorsMatrix::output_armed_stabilizing()
     throttle_thrust = get_throttle() * get_compensation_gain();
     throttle_avg_max = _throttle_avg_max * get_compensation_gain();
 
+    // limit the yaw demand
+    yaw_thrust = constrain_float(yaw_thrust, -_yaw_limit, _yaw_limit);
+
     // sanity check throttle is above zero and below current limited throttle
     if (throttle_thrust <= 0.0f) {
         throttle_thrust = 0.0f;
