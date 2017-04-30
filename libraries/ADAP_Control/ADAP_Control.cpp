@@ -23,6 +23,7 @@
 #include <AP_HAL/AP_HAL.h>
 #include <GCS_MAVLink/GCS.h>
 #include "ADAP_Control.h"
+#include <stdio.h>
 
 extern const AP_HAL::HAL& hal;
 
@@ -33,7 +34,7 @@ const AP_Param::GroupInfo ADAP_Control::var_info[] = {
 	AP_GROUPINFO("GAMT",     3, ADAP_Control, gamma_theta, 1000),
     AP_GROUPINFO("GAMW",     4, ADAP_Control, gamma_omega, 1000),
     AP_GROUPINFO("GAMS",     5, ADAP_Control, gamma_sigma, 1000),
-	AP_GROUPINFO("THEU",     6, ADAP_Control, theta_max, 2.0),
+	AP_GROUPINFO("THU",      6, ADAP_Control, theta_max, 2.0),
 	AP_GROUPINFO("THL",      7, ADAP_Control, theta_min, 0.5),
 	AP_GROUPINFO("THE",      8, ADAP_Control, theta_epsilon, 5925),
     AP_GROUPINFO("OMU",      9, ADAP_Control, omega_max, 2.0),
@@ -82,10 +83,11 @@ void ADAP_Control::reset(uint16_t loop_rate_hz)
   current sensor rate on the same axis in radians/second, return an
   actuator value from -1 to 1
  */
-float ADAP_Control::update(uint16_t loop_rate_hz, float target_rate, float sensor_rate)
+float ADAP_Control::update(uint16_t loop_rate_hz, float target_rate, float sensor_rate, float scaler)
 {
     float dt;
-
+    const float out_limit = radians(45);
+    
     x = sensor_rate;
     r = target_rate;
 
@@ -105,10 +107,14 @@ float ADAP_Control::update(uint16_t loop_rate_hz, float target_rate, float senso
     u_sp = eta;
 
     float out = constrain_float(eta-(kg*r),-radians(90)/dt, radians(90)/dt);
-
+    bool saturated = ((out < 0 && u_lowpass >= 0.99*out_limit) ||
+                      (out > 0 && u_lowpass <= -0.99*out_limit));
+    
     //kD(s)
-    integrator += dt*(out);  
-    u = constrain_float(-k*integrator,-radians(45),radians(45)); // C(s)= wk/(s+wk) -> k sets the first order low pass response
+    if (!saturated) {
+        integrator += dt*(out);
+    }
+    u = constrain_float(-k*integrator,-out_limit,out_limit); // C(s)= wk/(s+wk) -> k sets the first order low pass response
 
     // Additional cascaded second order low pass filter (strictly propper)
     u_lowpass = filter.apply(u); 
@@ -134,9 +140,11 @@ float ADAP_Control::update(uint16_t loop_rate_hz, float target_rate, float senso
     sigma_dot = projection_operator(sigma,-gamma_sigma*x_error*Pb,sigma_epsilon,sigma_max,sigma_min);
 			    
     // Parameter Update using Trapezoidal integration                 
-    theta += dt*(theta_dot);
-    omega += dt*(omega_dot);
-    sigma += dt*(sigma_dot);
+    if (!saturated) {
+        theta += dt*(theta_dot);
+        omega += dt*(omega_dot);
+        sigma += dt*(sigma_dot);
+    }
 
     theta = constrain_float(theta, theta_min, theta_max);
     omega = constrain_float(omega, omega_min, omega_max);
@@ -168,7 +176,7 @@ float ADAP_Control::update(uint16_t loop_rate_hz, float target_rate, float senso
         pid_info->desired = r;
     }
     
-    return constrain_float(u_lowpass/radians(45), -1, 1);
+    return constrain_float(u_lowpass/out_limit, -1, 1);
 }
 
 float ADAP_Control::projection_operator(float Theta, float y, float epsilon, float th_max, float th_min) const
