@@ -69,6 +69,9 @@ private:
     float theta_dot;
     float omega_dot;
     float sigma_dot;
+    float theta1;
+    float omega1;
+    float sigma1;
     float f;
     float f_dot;
     
@@ -79,4 +82,5 @@ private:
     
     void reset(uint16_t loop_rate_hz);
     float projection_operator(float theta, float y, float epsilon, float theta_max, float theta_min) const;
+    float trapezoidal_integration(float y_dot, float dt, float &y1);
 };

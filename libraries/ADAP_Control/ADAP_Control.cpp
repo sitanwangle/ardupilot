@@ -78,6 +78,17 @@ void ADAP_Control::reset(uint16_t loop_rate_hz)
     filter.reset();
 }
 
+
+/*
+  trapezoidal integration helper function
+ */
+float ADAP_Control::trapezoidal_integration(float y_dot, float dt, float &y1)
+{
+    float y = y1 + dt*y_dot; //Euler Integration
+    y1 += (dt/2)*(y+y_dot); //Trapezoidal
+    return y1;
+}
+
 /*
   adaptive control update. Given a target rate in radians/second and a
   current sensor rate on the same axis in radians/second, return an
@@ -141,9 +152,9 @@ float ADAP_Control::update(uint16_t loop_rate_hz, float target_rate, float senso
 			    
     // Parameter Update using Trapezoidal integration                 
     if (!saturated) {
-        theta += dt*(theta_dot);
-        omega += dt*(omega_dot);
-        sigma += dt*(sigma_dot);
+        theta = trapezoidal_integration(theta_dot, dt, theta1);
+        omega = trapezoidal_integration(omega_dot, dt, omega1);
+        sigma = trapezoidal_integration(sigma_dot, dt, sigma1);
     }
 
     theta = constrain_float(theta, theta_min, theta_max);
