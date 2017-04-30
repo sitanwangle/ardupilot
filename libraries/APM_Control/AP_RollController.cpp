@@ -81,6 +81,10 @@ const AP_Param::GroupInfo AP_RollController::var_info[] = {
 	// @User: User
 	AP_GROUPINFO("FF",        6, AP_RollController, gains.FF,          0.0f),
 
+    // @Group: _A_
+    // @Path: ../libraries/ADAP_Control/ADAP_Control.cpp
+    AP_SUBGROUPINFO(adap_control, "A_", 7, AP_RollController, ADAP_Control),
+    
 	AP_GROUPEND
 };
 
@@ -116,6 +120,10 @@ int32_t AP_RollController::_get_rate_out(float desired_rate, float scaler, bool 
     // Get body rate vector (radians/sec)
 	float omega_x = _ahrs.get_gyro().x;
 	
+    if (adap_control.enabled()) {
+        return adap_control.update(_ahrs.get_ins().get_sample_rate(), radians(desired_rate), omega_x) * 4500;
+    }
+
 	// Calculate the roll rate error (deg/sec) and apply gain scaler
     float achieved_rate = ToDeg(omega_x);
 	float rate_error = (desired_rate - achieved_rate) * scaler;
@@ -217,3 +225,10 @@ void AP_RollController::reset_I()
 	_pid_info.I = 0;
 }
 
+/*
+  send ADAP_TUNING message
+*/
+void AP_RollController::adaptive_tuning_send(mavlink_channel_t chan)
+{
+    adap_control.adaptive_tuning_send(chan, PID_TUNING_PITCH);
+}
