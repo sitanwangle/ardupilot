@@ -15,7 +15,7 @@ public:
 	}
 
     // calculate new output value
-    float update(uint16_t loop_rate_hz, float target_rate, float sensor_rate, float scaler);
+    float update(uint16_t loop_rate_hz, float target_rate, float sensor_rate, float scaler, float imax);
     
     void adaptive_tuning_send(mavlink_channel_t chan, uint8_t pid_axis);
 

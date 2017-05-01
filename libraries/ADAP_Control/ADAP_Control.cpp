@@ -94,8 +94,10 @@ float ADAP_Control::trapezoidal_integration(float y0, float y1_dot, float dt, fl
   adaptive control update. Given a target rate in radians/second and a
   current sensor rate on the same axis in radians/second, return an
   actuator value from -1 to 1
+
+  imax is integrator maximum limit, from 0 to 1
  */
-float ADAP_Control::update(uint16_t loop_rate_hz, float target_rate, float sensor_rate, float scaler)
+float ADAP_Control::update(uint16_t loop_rate_hz, float target_rate, float sensor_rate, float scaler, float imax)
 {
     float dt;
     const float out_limit = radians(45);
