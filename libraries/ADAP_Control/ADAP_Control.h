@@ -40,35 +40,36 @@ private:
     AP_Float gamma_omega;
     AP_Float gamma_sigma;
     AP_Float theta_max;
-	AP_Float theta_min;
+    AP_Float theta_min;
     AP_Float theta_epsilon;
     AP_Float omega_max;
-	AP_Float omega_min;
+    AP_Float omega_min;
     AP_Float omega_epsilon;
     AP_Float sigma_max;
-	AP_Float sigma_min;
+    AP_Float sigma_min;
     AP_Float sigma_epsilon;
     AP_Float w0;
     AP_Float k;
-	AP_Float kg;
+    AP_Float kg;
 
     // internal state
     uint64_t last_run_us;
-	float r;
+    float r;
     float x;
     float x_error;
     float eta;
-	float integrator;
+    float integrator;
     float theta;
     float omega;
     float sigma;
     float u;
     float u_lowpass;
-	float u_sp;
+    float u_sp;
     float x_m;
     float theta_dot;
     float omega_dot;
     float sigma_dot;
+    float out1;
     float theta1;
     float omega1;
     float sigma1;
@@ -82,5 +83,5 @@ private:
     
     void reset(uint16_t loop_rate_hz);
     float projection_operator(float theta, float y, float epsilon, float theta_max, float theta_min) const;
-    float trapezoidal_integration(float y_dot, float dt, float &y1);
+    float trapezoidal_integration(float y0, float y1_dot, float dt, float &y0_dot);
 };
