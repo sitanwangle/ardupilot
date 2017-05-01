@@ -346,7 +346,7 @@ int32_t AP_PitchController::get_servo_out(int32_t angle_err, float scaler, bool 
 	desired_rate = desired_rate + rate_offset;
 
 	if (adap_control.enabled()) {
-        return adap_control.update(_ahrs.get_ins().get_sample_rate(), radians(desired_rate), _ahrs.get_gyro().y, scaler) * 4500;
+        return adap_control.update(_ahrs.get_ins().get_sample_rate(), radians(desired_rate), _ahrs.get_gyro().y, scaler, gains.imax/4500.0) * 4500;
 	}
 
     return _get_rate_out(desired_rate, scaler, disable_integrator, aspeed);

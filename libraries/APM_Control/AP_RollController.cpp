@@ -121,7 +121,7 @@ int32_t AP_RollController::_get_rate_out(float desired_rate, float scaler, bool 
 	float omega_x = _ahrs.get_gyro().x;
 	
     if (adap_control.enabled()) {
-        return adap_control.update(_ahrs.get_ins().get_sample_rate(), radians(desired_rate), omega_x, scaler) * 4500;
+        return adap_control.update(_ahrs.get_ins().get_sample_rate(), radians(desired_rate), omega_x, scaler, gains.imax/4500.0) * 4500;
     }
 
 	// Calculate the roll rate error (deg/sec) and apply gain scaler
