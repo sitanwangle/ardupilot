@@ -15,7 +15,7 @@ public:
 	}
 
     // calculate new output value
-    float update(uint16_t loop_rate_hz, float target_rate, float sensor_rate, float scaler, float imax);
+    float update(uint16_t loop_rate_hz, float target_rate, float sensor_rate, float scaler, float aspeed);
     
     void adaptive_tuning_send(mavlink_channel_t chan, uint8_t pid_axis);
 
@@ -76,7 +76,8 @@ private:
     float f;
     float f_dot;
     
-	LowPassFilter2pFloat filter;
+	LowPassFilter2pFloat r_filter;
+        LowPassFilter2pFloat u_filter;
 
     // optional PID_Info structure
     DataFlash_Class::PID_Info *pid_info;

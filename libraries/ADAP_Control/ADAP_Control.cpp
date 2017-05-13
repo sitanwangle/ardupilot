@@ -73,9 +73,13 @@ void ADAP_Control::reset(uint16_t loop_rate_hz)
     sigma = 0.0;
     integrator = 0.0;
 
-    float cutoff_hz = w0/(2*M_PI); //convert cutoff freq from rad/s to hz
-    filter.set_cutoff_frequency(loop_rate_hz, cutoff_hz);
-    filter.reset();
+    float u_cutoff_hz = w0/(2*M_PI); //convert cutoff freq from rad/s to hz
+    u_filter.set_cutoff_frequency(loop_rate_hz, u_cutoff_hz);
+    u_filter.reset();
+
+    float r_cutoff_hz = (alpha-2)/(2*M_PI); //convert cutoff freq from rad/s to hz
+    r_filter.set_cutoff_frequency(loop_rate_hz, r_cutoff_hz);
+    r_filter.reset();
 }
 
 
@@ -95,15 +99,15 @@ float ADAP_Control::trapezoidal_integration(float y0, float y1_dot, float dt, fl
   current sensor rate on the same axis in radians/second, return an
   actuator value from -1 to 1
 
-  imax is integrator maximum limit, from 0 to 1
  */
-float ADAP_Control::update(uint16_t loop_rate_hz, float target_rate, float sensor_rate, float scaler, float imax)
+float ADAP_Control::update(uint16_t loop_rate_hz, float target_rate, float sensor_rate, float scaler, float aspeed)
 {
     float dt;
-    const float out_limit = radians(45);
+    const float u_limit = radians(45);
 
     x = sensor_rate;
     r = target_rate;
+    r = r_filter.apply(r);    
 
     //reset reference model at initialization
     uint64_t now = AP_HAL::micros64();
@@ -116,25 +120,33 @@ float ADAP_Control::update(uint16_t loop_rate_hz, float target_rate, float senso
     dt = (now - last_run_us) * 1.0e-6;
     last_run_us = now;
 
+
     // u (controller output to plant)
     eta = theta*x + omega*u_lowpass + sigma;
-    u_sp = eta;
+    u_sp = eta; // u to state predictor
 
-    float out = constrain_float(eta-(kg*r),-radians(90)/dt, radians(90)/dt);
-    bool saturated = ((out < 0 && u_lowpass >= 0.99*out_limit) ||
-                      (out > 0 && u_lowpass <= -0.99*out_limit));
+    u = constrain_float(eta-(kg*r),-radians(90)/dt, radians(90)/dt);
 
-    //kD(s) (simple integrator + cascaded second order low pass)
-    if (!saturated) {
-        //integrator += dt*out;
-        integrator = trapezoidal_integration(integrator, out, dt, out1);
+    // Check Controller Saturation from previous time step
+    bool saturated = ((u < 0 && u_lowpass >= 0.99*u_limit) ||
+                      (u > 0 && u_lowpass <= -0.99*u_limit));
+
+    // kD(s) (cascaded second order low pass + simple integrator)
+    u_lowpass = u_filter.apply(u);
+
+    // Turn off integrator when not flying
+    bool use_integrator = (dt > 0 && aspeed > 0.5f*10.0f);
+    //bool use_integrator = (dt > 0 && aspeed > 0.5f*float(aparm.airspeed_min));
+
+    if (!saturated || !use_integrator) {
+    	integrator = trapezoidal_integration(integrator, u_lowpass, dt, out1);
     }
-    u = constrain_float(-k*integrator,-out_limit,out_limit); // C(s)= wk/(s+wk) -> k sets the first order low pass response
 
-    // Additional cascaded second order low pass filter (strictly propper)
-    u_lowpass = filter.apply(u);
+    u_lowpass = constrain_float(-k*integrator,-u_limit,u_limit);
+     
 
     // State Predictor (first order single pole recursive filter)
+    // Reference/Companion Model
     float alpha_filt = exp(-alpha*dt); //alpha in rad/s
     alpha_filt = constrain_float(alpha_filt, 0.0, 1.0);
     float beta_filt = 1-alpha_filt;
@@ -142,6 +154,7 @@ float ADAP_Control::update(uint16_t loop_rate_hz, float target_rate, float senso
     x_m = alpha_filt*x_m + beta_filt*(u_sp);
 
     x_error = x_m - x;
+
 
     // Constrain error to +-300 deg/s
     x_error = constrain_float(x_error,-radians(300), radians(300));
@@ -156,9 +169,6 @@ float ADAP_Control::update(uint16_t loop_rate_hz, float target_rate, float senso
 
     // Parameter Update using Trapezoidal integration
     if (!saturated) {
-        //theta += dt*theta_dot;
-        //omega += dt*omega_dot;
-        //sigma += dt*sigma_dot;
         theta = trapezoidal_integration(theta, theta_dot, dt, theta1);
         omega = trapezoidal_integration(omega, omega_dot, dt, omega1);
         sigma = trapezoidal_integration(sigma, sigma_dot, dt, sigma1);
@@ -168,12 +178,7 @@ float ADAP_Control::update(uint16_t loop_rate_hz, float target_rate, float senso
     omega = constrain_float(omega, omega_min, omega_max);
     sigma = constrain_float(sigma, sigma_min, sigma_max);
 
-    // for ADAP_TUNING message
-    theta_dot = theta_dot;
-    omega_dot = omega_dot;
-    sigma_dot = sigma_dot;
-    x_error = x_error;
-
+    // Log Data to flash
     DataFlash_Class::instance()->Log_Write(log_msg_name, "TimeUS,Dt,Atheta,Aomega,Asigma,Aeta,Axm,Ax,Ar,Axerr,AuL", "Qffffffffff",
                                            now,
                                            dt,
@@ -186,15 +191,9 @@ float ADAP_Control::update(uint16_t loop_rate_hz, float target_rate, float senso
                                            degrees(r),
                                            degrees(x_error),
                                            degrees(u_lowpass));
-    if (pid_info) {
-        pid_info->P = theta;
-        pid_info->I = sigma;
-        pid_info->FF = x_m;
-        pid_info->D = x_error;
-        pid_info->desired = r;
-    }
+ 
 
-    return constrain_float(u_lowpass/out_limit, -1, 1);
+    return constrain_float(u_lowpass/u_limit, -1, 1);
 }
 
 float ADAP_Control::projection_operator(float Theta, float y, float epsilon, float th_max, float th_min) const
