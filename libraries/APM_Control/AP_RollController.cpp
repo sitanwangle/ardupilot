@@ -120,9 +120,6 @@ int32_t AP_RollController::_get_rate_out(float desired_rate, float scaler, bool 
     // Get body rate vector (radians/sec)
 	float omega_x = _ahrs.get_gyro().x;
 	
-    if (adap_control.enabled()) {
-        return adap_control.update(_ahrs.get_ins().get_sample_rate(), radians(desired_rate), omega_x, scaler, gains.imax/4500.0) * 4500;
-    }
 
 	// Calculate the roll rate error (deg/sec) and apply gain scaler
     float achieved_rate = ToDeg(omega_x);
@@ -132,6 +129,10 @@ int32_t AP_RollController::_get_rate_out(float desired_rate, float scaler, bool 
 	float aspeed;
 	if (!_ahrs.airspeed_estimate(&aspeed)) {
         aspeed = 0.0f;
+    }
+
+    if (adap_control.enabled()) {
+        return adap_control.update(_ahrs.get_ins().get_sample_rate(), radians(desired_rate), omega_x, scaler, aspeed) * 4500;
     }
 
 	// Multiply roll rate error by _ki_rate, apply scaler and integrate
