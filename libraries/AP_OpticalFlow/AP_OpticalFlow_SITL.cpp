@@ -46,6 +46,7 @@ void AP_OpticalFlow_SITL::update(void)
     if (now - last_flow_ms < 1000*(1.0f/_sitl->flow_rate)) {
         return;
     }
+    state.dt = 1e-3f * (float)(now - last_flow_ms);
     last_flow_ms = now;
 
     Vector3f gyro(radians(_sitl->state.rollRate), 

@@ -321,6 +321,8 @@ void AP_OpticalFlow_Pixart::update(void)
         float flowScaleFactorX = 1.0f + 0.001f * flowScaler.x;
         float flowScaleFactorY = 1.0f + 0.001f * flowScaler.y;
         float dt = integral.sum_us * 1.0e-6;
+
+        state.dt = dt;
         
         state.flowRate = Vector2f(integral.sum.x * flowScaleFactorX,
                                   integral.sum.y * flowScaleFactorY);

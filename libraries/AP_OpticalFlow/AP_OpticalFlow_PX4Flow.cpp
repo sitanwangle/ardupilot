@@ -113,6 +113,7 @@ void AP_OpticalFlow_PX4Flow::timer(void)
         float flowScaleFactorX = 1.0f + 0.001f * flowScaler.x;
         float flowScaleFactorY = 1.0f + 0.001f * flowScaler.y;
         float integralToRate = 1.0e6 / frame.integration_timespan;
+        state.dt = 1e-6f * (float)frame.integration_timespan;
         
         state.surface_quality = frame.qual;
         state.flowRate = Vector2f(frame.pixel_flow_x_integral * flowScaleFactorX,
