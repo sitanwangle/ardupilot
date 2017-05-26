@@ -30,6 +30,7 @@ struct PACKED log_Optflow {
     float flow_y;
     float body_x;
     float body_y;
+    float dt;
 };
 
 // Write an optical flow packet
@@ -42,14 +43,16 @@ void Sub::Log_Write_Optflow()
     }
     const Vector2f &flowRate = optflow.flowRate();
     const Vector2f &bodyRate = optflow.bodyRate();
+    uint64_t timeStamp_us = 1000 * optflow.last_update();
     struct log_Optflow pkt = {
         LOG_PACKET_HEADER_INIT(LOG_OPTFLOW_MSG),
-        time_us         : AP_HAL::micros64(),
+        time_us         : timeStamp_us,
         surface_quality : optflow.quality(),
         flow_x          : flowRate.x,
         flow_y          : flowRate.y,
         body_x          : bodyRate.x,
-        body_y          : bodyRate.y
+        body_y          : bodyRate.y,
+        dt              : optflow.last_dt()
     };
     DataFlash.WriteBlock(&pkt, sizeof(pkt));
 #endif     // OPTFLOW == ENABLED
