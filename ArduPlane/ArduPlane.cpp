@@ -1001,11 +1001,12 @@ void Plane::update_optical_flow(void)
     // write to log and send to EKF if new data has arrived
     if (optflow.last_update() != last_of_update) {
         last_of_update = optflow.last_update();
+        float deltaTime = optflow.last_dt();
         uint8_t flowQuality = optflow.quality();
         Vector2f flowRate = optflow.flowRate();
         Vector2f bodyRate = optflow.bodyRate();
         const Vector3f &posOffset = optflow.get_pos_offset();
-        ahrs.writeOptFlowMeas(flowQuality, flowRate, bodyRate, last_of_update, posOffset);
+        ahrs.writeOptFlowMeas(flowQuality, flowRate, bodyRate, last_of_update, posOffset, deltaTime);
         Log_Write_Optflow();
     }
 }
