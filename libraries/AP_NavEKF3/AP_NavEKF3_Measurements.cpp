@@ -132,7 +132,7 @@ void NavEKF3_core::writeBodyFrameOdom(float quality, const Vector3f &delPos, con
 
 // write the raw optical flow measurements
 // this needs to be called externally.
-void NavEKF3_core::writeOptFlowMeas(uint8_t &rawFlowQuality, Vector2f &rawFlowRates, Vector2f &rawGyroRates, uint32_t &msecFlowMeas, const Vector3f &posOffset)
+void NavEKF3_core::writeOptFlowMeas(uint8_t &rawFlowQuality, Vector2f &rawFlowRates, Vector2f &rawGyroRates, uint32_t &msecFlowMeas, const Vector3f &posOffset, float &deltaTime)
 {
     // limit update rate to maximum allowed by sensor buffers
     if ((imuSampleTime_ms - flowMeaTime_ms) < frontend->sensorIntervalMin_ms) {
