@@ -135,7 +135,7 @@ void NavEKF3_core::writeBodyFrameOdom(float quality, const Vector3f &delPos, con
 void NavEKF3_core::writeOptFlowMeas(uint8_t &rawFlowQuality, Vector2f &rawFlowRates, Vector2f &rawGyroRates, uint32_t &msecFlowMeas, const Vector3f &posOffset, float &deltaTime)
 {
     // limit update rate to maximum allowed by sensor buffers
-    if ((imuSampleTime_ms - flowMeaTime_ms) < frontend->sensorIntervalMin_ms) {
+    if ((msecFlowMeas - flowMeaTime_ms) < frontend->sensorIntervalMin_ms) {
         return;
     }
 
@@ -145,7 +145,8 @@ void NavEKF3_core::writeOptFlowMeas(uint8_t &rawFlowQuality, Vector2f &rawFlowRa
     // A positive Y rate is produced by a positive sensor rotation about the Y axis
     // This filter uses a different definition of optical flow rates to the sensor with a positive optical flow rate produced by a
     // negative rotation about that axis. For example a positive rotation of the flight vehicle about its X (roll) axis would produce a negative X flow rate
-    flowMeaTime_ms = imuSampleTime_ms;
+    flowMeaTime_ms = msecFlowMeas;
+
     // calculate bias errors on flow sensor gyro rates, but protect against spikes in data
     // reset the accumulated body delta angle and time
     // don't do the calculation if not enough time lapsed for a reliable body rate measurement
@@ -187,8 +188,8 @@ void NavEKF3_core::writeOptFlowMeas(uint8_t &rawFlowQuality, Vector2f &rawFlowRa
         ofDataNew.flowRadXYcomp.y = ofDataNew.flowRadXY.y + ofDataNew.bodyRadXYZ.y;
         // record time last observation was received so we can detect loss of data elsewhere
         flowValidMeaTime_ms = imuSampleTime_ms;
-        // estimate sample time of the measurement
-        ofDataNew.time_ms = imuSampleTime_ms - frontend->_flowDelay_ms - frontend->flowTimeDeltaAvg_ms/2;
+        // estimate mid sample time of the measurement
+        ofDataNew.time_ms = flowMeaTime_ms - frontend->_flowDelay_ms - 500 * deltaTime;
         // Correct for the average intersampling delay due to the filter updaterate
         ofDataNew.time_ms -= localFilterTimeStep_ms/2;
         // Prevent time delay exceeding age of oldest IMU data in the buffer
