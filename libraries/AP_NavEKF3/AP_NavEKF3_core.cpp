@@ -48,8 +48,7 @@ bool NavEKF3_core::setup_core(NavEKF3 *_frontend, uint8_t _imu_index, uint8_t _c
 
     /*
       The imu_buffer_length needs to cope with the worst case sensor delay at the
-      maximum fusion rate of 100Hz. Non-imu data coming in at faster than 100Hz is
-      downsampled. For 50Hz main loop rate we need a shorter buffer.
+      target EKF state prediction rate. Non-IMU data coming in faster is downsampled.
      */
 
     // Calculate the expected EKF time step
@@ -123,6 +122,9 @@ bool NavEKF3_core::setup_core(NavEKF3 *_frontend, uint8_t _imu_index, uint8_t _c
         return false;
     }
     if(!storedBodyOdm.init(obs_buffer_length)) {
+        return false;
+    }
+    if(!storedYawAng.init(obs_buffer_length)) {
         return false;
     }
     // Note: the use of dual range finders potentially doubles the amount of data to be stored
@@ -385,6 +387,7 @@ void NavEKF3_core::InitialiseVariables()
     storedOutput.reset();
     storedRangeBeacon.reset();
     storedBodyOdm.reset();
+    storedYawAng.reset();
 }
 
 // Initialise the states from accelerometer and magnetometer data (if present)

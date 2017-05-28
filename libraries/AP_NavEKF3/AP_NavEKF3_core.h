@@ -501,6 +501,13 @@ private:
         uint32_t        time_ms;    // measurement timestamp (msec)
     };
 
+    struct yaw_elements {
+        float       yawAng;         // yaw angle measurement (rad)
+        float       yawAngErr;      // yaw angle 1SD measurement accuracy (rad)
+        uint32_t    time_ms;        // measurement timestamp (msec)
+        uint8_t     type;           // type specifiying Euler rotation order used, 1 = 312 (ZXY), 2 = 321 (ZYX)
+    };
+
     // update the navigation filter status
     void updateFilterStatus(void);
 
@@ -1067,13 +1074,17 @@ private:
     uint8_t bodyOdmStoreIndex;          // Body  frame odometry  data storage index
     uint32_t lastbodyVelPassTime_ms;    // time stamp when the body velocity measurement last passed innovation consistency checks (msec)
     Vector3 bodyVelTestRatio;           // Innovation test ratios for body velocity XYZ measurements
-    Vector3 varInnovBodyVel;            // Body velocity XYZ innovation variances (rad/sec)^2
-    Vector3 innovBodyVel;               // Body velocity XYZ innovations (rad/sec)
+    Vector3 varInnovBodyVel;            // Body velocity XYZ innovation variances (m/sec)^2
+    Vector3 innovBodyVel;               // Body velocity XYZ innovations (m/sec)
     uint32_t prevBodyVelFuseTime_ms;    // previous time all body velocity measurement components passed their innovation consistency checks (msec)
     uint32_t bodyOdmMeasTime_ms;        // time body velocity measurements were accepted for input to the data buffer (msec)
     bool bodyVelFusionDelayed;          // true when body frame velocity fusion has been delayed
     bool bodyVelFusionActive;           // true when body frame velocity fusion is active
 
+    // yaw sensor fusion
+    obs_ring_buffer_t<yaw_elements> storedYawAng;
+    yaw_elements yawAngDataNew;
+    yaw_elements yawAngDataDelayed;
 
     // Range Beacon Sensor Fusion
     obs_ring_buffer_t<rng_bcn_elements> storedRangeBeacon; // Beacon range buffer
