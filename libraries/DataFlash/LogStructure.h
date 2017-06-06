@@ -420,6 +420,18 @@ struct PACKED log_RngBcnDebug {
     int16_t posD;           // Down position of receiver rel to EKF origin (cm)
 };
 
+struct PACKED log_RngBcnAlign {
+    LOG_PACKET_HEADER;
+    uint64_t time_us;
+    uint8_t alignmentStarted;
+    uint8_t alignmentCompleted;
+    float vehiclePosErr;
+    uint8_t goodToAlign;
+    float posVarN;
+    float posVarE;
+    float posVarD;
+};
+
 // visual odometry sensor data
 struct PACKED log_VisualOdom {
     LOG_PACKET_HEADER;
@@ -1020,6 +1032,8 @@ Format characters in the format string for binary log messages
       "XKF9","QcccccfbbHBHHb","TimeUS,SV,SP,SH,SM,SVT,errRP,OFN,OFE,FS,TS,SS,GPS,PI" }, \
     { LOG_XKF10_MSG, sizeof(log_RngBcnDebug), \
       "XKF0","QBccCCcccccccc","TimeUS,ID,rng,innov,SIV,TR,BPN,BPE,BPD,OFH,OFL,OFN,OFE,OFD" }, \
+    { LOG_XKF11_MSG, sizeof(log_RngBcnAlign), \
+      "XKFA","QBBfBfff","TimeUS,AS,AC,VPE,GTA,varN,varE,varD" }, \
     { LOG_XKQ1_MSG, sizeof(log_Quaternion), "XKQ1", QUAT_FMT, QUAT_LABELS }, \
     { LOG_XKQ2_MSG, sizeof(log_Quaternion), "XKQ2", QUAT_FMT, QUAT_LABELS }, \
     { LOG_XKFD_MSG, sizeof(log_ekfBodyOdomDebug), \
@@ -1229,6 +1243,7 @@ enum LogMessages {
     LOG_XKF8_MSG,
     LOG_XKF9_MSG,
     LOG_XKF10_MSG,
+    LOG_XKF11_MSG,
     LOG_XKQ1_MSG,
     LOG_XKQ2_MSG,
     LOG_XKFD_MSG,
