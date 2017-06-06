@@ -105,6 +105,21 @@ bool NavEKF3_core::getRangeBeaconDebug(uint8_t &ID, float &rng, float &innov, fl
     return true;
 }
 
+void NavEKF3_core::getRangeBeaconAlignDebug(bool &alignmentStarted,
+                                        bool &alignmentCompleted,
+                                        float &vehiclePosErr,
+                                        bool &goodToAlign,
+                                        Vector3f &posVar)
+{
+    alignmentStarted = rngBcnAlignmentStarted;
+    alignmentCompleted = rngBcnAlignmentCompleted;
+    vehiclePosErr = beaconVehiclePosErr;
+    goodToAlign = rngBcnGoodToAlign;
+    posVar[0] = receiverPosCov[0][0];
+    posVar[1] = receiverPosCov[1][1];
+    posVar[2] = receiverPosCov[2][2];
+}
+
 // provides the height limit to be observed by the control loops
 // returns false if no height limiting is required
 // this is needed to ensure the vehicle does not fly too high when using optical flow navigation

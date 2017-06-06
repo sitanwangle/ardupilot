@@ -1193,6 +1193,24 @@ bool NavEKF3::getRangeBeaconDebug(int8_t instance, uint8_t &ID, float &rng, floa
     }
 }
 
+void NavEKF3::getRangeBeaconAlignDebug(int8_t instance,
+                                   bool &alignmentStarted,
+                                   bool &alignmentCompleted,
+                                   float &vehiclePosErr,
+                                   bool &goodToAlign,
+                                   Vector3f &posVar)
+{
+    if (instance < 0 || instance >= num_cores) instance = primary;
+    if (core) {
+        core[instance].getRangeBeaconAlignDebug(alignmentStarted,
+                                            alignmentCompleted,
+                                            vehiclePosErr,
+                                            goodToAlign,
+                                            posVar);
+    }
+}
+
+
 // called by vehicle code to specify that a takeoff is happening
 // causes the EKF to compensate for expected barometer errors due to ground effect
 void NavEKF3::setTakeoffExpected(bool val)

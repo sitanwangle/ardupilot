@@ -243,6 +243,13 @@ public:
     bool getRangeBeaconDebug(int8_t instance, uint8_t &ID, float &rng, float &innov, float &innovVar, float &testRatio, Vector3f &beaconPosNED,
                              float &offsetHigh, float &offsetLow, Vector3f &posNED);
 
+    void getRangeBeaconAlignDebug(int8_t instance,
+                         bool &alignmentStarted,
+                         bool &alignmentCompleted,
+                         float &vehiclePosErr,
+                         bool &goodToAlign,
+                         Vector3f &posVar);
+
     // called by vehicle code to specify that a takeoff is happening
     // causes the EKF to compensate for expected barometer errors due to ground effect
     void setTakeoffExpected(bool val);
