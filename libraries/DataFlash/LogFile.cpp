@@ -1742,7 +1742,7 @@ void DataFlash_Class::Log_Write_EKF3(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
     float bcnPosOffsetHigh;
     float bcnPosOffsetLow;
     Vector3f posNED;
-     if (ahrs.get_NavEKF3().getRangeBeaconDebug(-1, ID, rng, innov, innovVar, testRatio, beaconPosNED, bcnPosOffsetHigh, bcnPosOffsetLow, posNED)) {
+    if (ahrs.get_NavEKF3().getRangeBeaconDebug(-1, ID, rng, innov, innovVar, testRatio, beaconPosNED, bcnPosOffsetHigh, bcnPosOffsetLow, posNED)) {
         if (rng > 0.0f) {
             struct log_RngBcnDebug pkt10 = {
                 LOG_PACKET_HEADER_INIT(LOG_XKF10_MSG),
@@ -1764,6 +1764,25 @@ void DataFlash_Class::Log_Write_EKF3(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
              };
             WriteBlock(&pkt10, sizeof(pkt10));
         }
+
+        bool alignmentStarted;
+        bool alignmentCompleted;
+        float vehiclePosErr;
+        bool goodToAlign;
+        Vector3f variance;
+        ahrs.get_NavEKF3().getRangeBeaconAlignDebug(-1, alignmentStarted, alignmentCompleted, vehiclePosErr, goodToAlign, variance);
+        struct log_RngBcnAlign pkt11 = {
+            LOG_PACKET_HEADER_INIT(LOG_XKF11_MSG),
+            time_us : time_us,
+            alignmentStarted : (uint8_t)alignmentStarted,
+            alignmentCompleted : (uint8_t)alignmentCompleted,
+            vehiclePosErr : vehiclePosErr,
+            goodToAlign : (uint8_t)goodToAlign,
+            posVarN : variance.x,
+            posVarE : variance.y,
+            posVarD : variance.z
+        };
+        WriteBlock(&pkt11, sizeof(pkt11));
     }
     // write debug data for body frame odometry fusion
     Vector3f velBodyInnov,velBodyInnovVar;

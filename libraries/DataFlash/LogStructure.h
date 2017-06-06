@@ -419,6 +419,18 @@ struct PACKED log_RngBcnDebug {
     int16_t posD;           // Down position of receiver rel to EKF origin (cm)
 };
 
+struct PACKED log_RngBcnAlign {
+    LOG_PACKET_HEADER;
+    uint64_t time_us;
+    uint8_t alignmentStarted;
+    uint8_t alignmentCompleted;
+    float vehiclePosErr;
+    uint8_t goodToAlign;
+    float posVarN;
+    float posVarE;
+    float posVarD;
+};
+
 // visual odometry sensor data
 struct PACKED log_VisualOdom {
     LOG_PACKET_HEADER;
@@ -637,26 +649,26 @@ struct PACKED log_GPS_RAWS {
     uint8_t trkStat;
 };
 
-struct PACKED log_GPS_SBF_EVENT {  
-	LOG_PACKET_HEADER; 
-	uint64_t time_us;
-	uint32_t TOW;
-	uint16_t WNc;
-	uint8_t Mode;
-	uint8_t Error;
-	double Latitude;
-	double Longitude;
-	double Height;
-	float Undulation;
-	float Vn;
-	float Ve;
-	float Vu;
-	float COG;
+struct PACKED log_GPS_SBF_EVENT {
+    LOG_PACKET_HEADER;
+    uint64_t time_us;
+    uint32_t TOW;
+    uint16_t WNc;
+    uint8_t Mode;
+    uint8_t Error;
+    double Latitude;
+    double Longitude;
+    double Height;
+    float Undulation;
+    float Vn;
+    float Ve;
+    float Vu;
+    float COG;
 };
 
 struct PACKED log_Esc {
     LOG_PACKET_HEADER;
-    uint64_t time_us;     
+    uint64_t time_us;
     int16_t rpm;
     int16_t voltage;
     int16_t current;
@@ -920,7 +932,7 @@ Format characters in the format string for binary log messages
       "CURR", CURR_FMT,CURR_LABELS }, \
     { LOG_CURRENT2_MSG, sizeof(log_Current), \
       "CUR2", CURR_FMT,CURR_LABELS }, \
-	{ LOG_ATTITUDE_MSG, sizeof(log_Attitude),\
+    { LOG_ATTITUDE_MSG, sizeof(log_Attitude),\
       "ATT", "QccccCCCC", "TimeUS,DesRoll,Roll,DesPitch,Pitch,DesYaw,Yaw,ErrRP,ErrYaw" }, \
     { LOG_COMPASS_MSG, sizeof(log_Compass), \
       "MAG", MAG_FMT,    MAG_LABELS }, \
@@ -987,7 +999,8 @@ Format characters in the format string for binary log messages
       "XKF9","QcccccfbbHBHHb","TimeUS,SV,SP,SH,SM,SVT,errRP,OFN,OFE,FS,TS,SS,GPS,PI" }, \
     { LOG_XKF10_MSG, sizeof(log_RngBcnDebug), \
       "XKF0","QBccCCcccccccc","TimeUS,ID,rng,innov,SIV,TR,BPN,BPE,BPD,OFH,OFL,OFN,OFE,OFD" }, \
-    { LOG_XKQ1_MSG, sizeof(log_Quaternion), "XKQ1", QUAT_FMT, QUAT_LABELS }, \
+    { LOG_XKF11_MSG, sizeof(log_RngBcnAlign), \
+      "XKFA","QBBfBfff","TimeUS,AS,AC,VPE,GTA,varN,varE,varD" }, \
     { LOG_XKQ2_MSG, sizeof(log_Quaternion), "XKQ2", QUAT_FMT, QUAT_LABELS }, \
     { LOG_XKFD_MSG, sizeof(log_ekfBodyOdomDebug), \
       "XKFD","Qffffff","TimeUS,IX,IY,IZ,IVX,IVY,IVZ" }, \
@@ -1143,7 +1156,7 @@ enum LogMessages {
     LOG_GPS_RAW_MSG,
     LOG_GPS_RAWH_MSG,
     LOG_GPS_RAWS_MSG,
-	LOG_GPS_SBF_EVENT_MSG,
+    LOG_GPS_SBF_EVENT_MSG,
     LOG_ACC1_MSG,
     LOG_ACC2_MSG,
     LOG_ACC3_MSG,
@@ -1190,6 +1203,7 @@ enum LogMessages {
     LOG_XKF8_MSG,
     LOG_XKF9_MSG,
     LOG_XKF10_MSG,
+    LOG_XKF11_MSG,
     LOG_XKQ1_MSG,
     LOG_XKQ2_MSG,
     LOG_XKFD_MSG,
