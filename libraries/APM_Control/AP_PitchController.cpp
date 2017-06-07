@@ -100,7 +100,7 @@ const AP_Param::GroupInfo AP_PitchController::var_info[] = {
 
     // @Param: SRMAX
     // @DisplayName: Servo slew rate limit
-    // @Description: The pitch rate feedback will be reduced to prevent it producing a servo slew rate greater than this. This prevents divergent oscillations caused by high D-gains on vehicles with low pitch rate damping.
+    // @Description: Sets an upper limit on the servo slew rate produced by the D-gain (pitch rate feedback). If the amplitude of the control action produced by the pitch rate feedback exceeds this value, then the D-gain is reduced to respect the limit. This limits the amplitude of high frequency oscillations caused by an excessive D-gain. The limit should be set to no more than 25% of the servo's specified slew rate to allow for inertia and aerodynamic load effects. Note: The D-gain will not be reduced to less than 10% of the nominal value.
     // @Units: deg/sec
     // @Range: 50 500
     // @Increment: 10.0
