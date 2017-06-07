@@ -526,6 +526,7 @@ struct PACKED log_PID {
     float   D;
     float   FF;
     float   AFF;
+    float   Dmod;
 };
 
 struct PACKED log_Current {

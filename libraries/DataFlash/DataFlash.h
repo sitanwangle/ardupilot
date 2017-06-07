@@ -165,6 +165,7 @@ public:
         float D;
         float FF;
         float AFF;
+        float Dmod;
     };
 
     void Log_Write_PID(uint8_t msg_type, const PID_Info &info);
