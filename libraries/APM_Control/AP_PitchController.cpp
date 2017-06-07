@@ -98,7 +98,25 @@ const AP_Param::GroupInfo AP_PitchController::var_info[] = {
 	// @User: User
 	AP_GROUPINFO("FF",        8, AP_PitchController, gains.FF,       0.0f),
 
-	AP_GROUPEND
+    // @Param: SRMAX
+    // @DisplayName: Servo slew rate limit
+    // @Description: The pitch rate feedback will be reduced to prevent it producing a servo slew rate greater than this. This prevents divergent oscillations caused by high D-gains on vehicles with low pitch rate damping.
+    // @Units: deg/sec
+    // @Range: 50 500
+    // @Increment: 10.0
+    // @User: Advanced
+    AP_GROUPINFO("SRMAX", 9, AP_PitchController, _slew_rate_max, 100.0f),
+
+    // @Param: SRTAU
+    // @DisplayName: Servo slew rate decay time constant
+    // @Description: This sets the time constant used to recover the D gain after it has been reduced due to excessive servo slew rate.
+    // @Units: deg/sec
+    // @Range: 0.5 5.0
+    // @Increment: 0.1
+    // @User: Advanced
+    AP_GROUPINFO("SRTAU", 10, AP_PitchController, _slew_rate_tau, 2.0f),
+
+    AP_GROUPEND
 };
 
 /*
@@ -177,7 +195,7 @@ int32_t AP_PitchController::_get_rate_out(float desired_rate, float scaler, bool
     float eas2tas = _ahrs.get_EAS2TAS();
 	float kp_ff = MAX((gains.P - gains.I * gains.tau) * gains.tau  - gains.D , 0) / eas2tas;
     float k_ff = gains.FF / eas2tas;
-	
+
 	// Calculate the demanded control surface deflection
 	// Note the scaler is applied again. We want a 1/speed scaler applied to the feed-forward
 	// path, but want a 1/speed^2 scaler applied to the rate error path. 
@@ -185,6 +203,22 @@ int32_t AP_PitchController::_get_rate_out(float desired_rate, float scaler, bool
     _pid_info.P = desired_rate * kp_ff * scaler;
     _pid_info.FF = desired_rate * k_ff * scaler;
     _pid_info.D = rate_error * gains.D * scaler;
+
+    // Calculate the slew rate amplitude produced by the unmodified D term
+    if (dt > 0) {
+        // calculate a low pass filtered slew rate
+        float Dterm_slew_rate = _slew_rate_filter.apply(((_pid_info.D - _last_pid_info_D)/ delta_time), delta_time);
+
+        // rectify and apply a decaying envelope filter
+        float alpha = 1.0f - constrain_float(delta_time/_slew_rate_tau, 0.0f , 1.0f);
+        _slew_rate_amplitude = fmaxf(fabsf(Dterm_slew_rate), alpha * _slew_rate_amplitude);
+    }
+    _last_pid_info_D = _pid_info.D;
+
+    // Calculate and apply the D gain adjustment
+    _D_gain_modifier = _slew_rate_max / fmaxf(_slew_rate_amplitude, _slew_rate_max);
+    _pid_info.D *= _D_gain_modifier;
+
 	_last_out = _pid_info.D + _pid_info.FF + _pid_info.P;
     _pid_info.desired = desired_rate;
 
