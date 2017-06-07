@@ -216,7 +216,7 @@ int32_t AP_PitchController::_get_rate_out(float desired_rate, float scaler, bool
     _last_pid_info_D = _pid_info.D;
 
     // Calculate and apply the D gain adjustment
-    _D_gain_modifier = _slew_rate_max / fmaxf(_slew_rate_amplitude, _slew_rate_max);
+    _pid_info.Dmod = _D_gain_modifier = _slew_rate_max / fmaxf(_slew_rate_amplitude, _slew_rate_max);
     _pid_info.D *= _D_gain_modifier;
 
 	_last_out = _pid_info.D + _pid_info.FF + _pid_info.P;
