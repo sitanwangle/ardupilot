@@ -105,7 +105,7 @@ const AP_Param::GroupInfo AP_PitchController::var_info[] = {
     // @Range: 50 500
     // @Increment: 10.0
     // @User: Advanced
-    AP_GROUPINFO("SRMAX", 9, AP_PitchController, _slew_rate_max, 100.0f),
+    AP_GROUPINFO("SRMAX", 9, AP_PitchController, _slew_rate_max, 150.0f),
 
     // @Param: SRTAU
     // @DisplayName: Servo slew rate decay time constant
@@ -114,7 +114,7 @@ const AP_Param::GroupInfo AP_PitchController::var_info[] = {
     // @Range: 0.5 5.0
     // @Increment: 0.1
     // @User: Advanced
-    AP_GROUPINFO("SRTAU", 10, AP_PitchController, _slew_rate_tau, 2.0f),
+    AP_GROUPINFO("SRTAU", 10, AP_PitchController, _slew_rate_tau, 1.0f),
 
     AP_GROUPEND
 };
@@ -212,6 +212,7 @@ int32_t AP_PitchController::_get_rate_out(float desired_rate, float scaler, bool
         // rectify and apply a decaying envelope filter
         float alpha = 1.0f - constrain_float(delta_time/_slew_rate_tau, 0.0f , 1.0f);
         _slew_rate_amplitude = fmaxf(fabsf(Dterm_slew_rate), alpha * _slew_rate_amplitude);
+        _slew_rate_amplitude = fminf(_slew_rate_amplitude, 10.0f*_slew_rate_max);
     }
     _last_pid_info_D = _pid_info.D;
 
