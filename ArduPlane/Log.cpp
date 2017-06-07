@@ -523,13 +523,13 @@ const struct LogStructure Plane::log_structure[] = {
       "OF",   "QBffff",   "TimeUS,Qual,flowX,flowY,bodyX,bodyY" },
 #endif
     { LOG_PIQR_MSG, sizeof(log_PID), \
-      "PIQR", "Qffffff",  "TimeUS,Des,P,I,D,FF,AFF" }, \
+      "PIQR", "Qfffffff",  "TimeUS,Des,P,I,D,FF,AFF,Dmod" }, \
     { LOG_PIQP_MSG, sizeof(log_PID), \
-      "PIQP", "Qffffff",  "TimeUS,Des,P,I,D,FF,AFF" }, \
+      "PIQP", "Qfffffff",  "TimeUS,Des,P,I,D,FF,AFF,Dmod" }, \
     { LOG_PIQY_MSG, sizeof(log_PID), \
-      "PIQY", "Qffffff",  "TimeUS,Des,P,I,D,FF,AFF" }, \
+      "PIQY", "Qfffffff",  "TimeUS,Des,P,I,D,FF,AFF,Dmod" }, \
     { LOG_PIQA_MSG, sizeof(log_PID), \
-      "PIQA", "Qffffff",  "TimeUS,Des,P,I,D,FF,AFF" }, \
+      "PIQA", "Qfffffff",  "TimeUS,Des,P,I,D,FF,AFF,Dmod" }, \
 };
 
 #if CLI_ENABLED == ENABLED
