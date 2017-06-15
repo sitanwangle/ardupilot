@@ -656,8 +656,9 @@ void NavEKF3_core::UpdateStrapdownEquationsNED()
     // limit states to protect against divergence
     ConstrainStates();
 
-    // If main filter velocity states are valid, update the range beacon receiver position states
-    if (filterStatus.flags.horiz_vel) {
+    // If main filter velocity states are valid, predict the range beacon receiver initial position states
+    // until the position alignment is complete
+    if (!bcnOriginEstInit && filterStatus.flags.horiz_vel) {
         receiverPos += (stateStruct.velocity + lastVelocity) * (imuDataDelayed.delVelDT*0.5f);
     }
 }
