@@ -1135,12 +1135,12 @@ void NavEKF3::writeOptFlowMeas(uint8_t &rawFlowQuality, Vector2f &rawFlowRates, 
 }
 
 // return data for debugging optical flow fusion
-void NavEKF3::getFlowDebug(int8_t instance, float &varFlow, float &gndOffset, float &flowInnovX, float &flowInnovY, float &auxInnov,
-                           float &HAGL, float &rngInnov, float &range, float &gndOffsetErr)
+void NavEKF3::getFlowDebug(int8_t instance, float &varFlow, float &gndOffset, float &flowInnovX, float &flowInnovY, float &auxInnovX, float &auxInnovY,
+                           float &HAGL, float &rngInnov, float &gndOffsetErr)
 {
     if (instance < 0 || instance >= num_cores) instance = primary;
     if (core) {
-        core[instance].getFlowDebug(varFlow, gndOffset, flowInnovX, flowInnovY, auxInnov, HAGL, rngInnov, range, gndOffsetErr);
+        core[instance].getFlowDebug(varFlow, gndOffset, flowInnovX, flowInnovY, auxInnovX, auxInnovY, HAGL, rngInnov, gndOffsetErr);
     }
 }
 

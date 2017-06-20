@@ -52,16 +52,16 @@ float NavEKF3_core::errorScore() const
 }
 
 // return data for debugging optical flow fusion
-void NavEKF3_core::getFlowDebug(float &varFlow, float &gndOffset, float &flowInnovX, float &flowInnovY, float &auxInnov, float &HAGL, float &rngInnov, float &range, float &gndOffsetErr) const
+void NavEKF3_core::getFlowDebug(float &varFlow, float &gndOffset, float &flowInnovX, float &flowInnovY, float &auxInnovX,  float &auxInnovY, float &HAGL, float &rngInnov, float &gndOffsetErr) const
 {
     varFlow = MAX(flowTestRatio[0],flowTestRatio[1]);
     gndOffset = terrainState;
     flowInnovX = innovOptFlow[0];
     flowInnovY = innovOptFlow[1];
-    auxInnov = auxFlowObsInnov;
+    auxInnovX = auxFlowObsInnov[0];
+    auxInnovY = auxFlowObsInnov[1];
     HAGL = terrainState - stateStruct.position.z;
     rngInnov = innovRng;
-    range = rangeDataDelayed.rng;
     gndOffsetErr = sqrtf(Popt); // note Popt is constrained to be non-negative in EstimateTerrainOffset()
 }
 

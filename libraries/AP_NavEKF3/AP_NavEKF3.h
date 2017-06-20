@@ -224,7 +224,7 @@ public:
 
     // return data for debugging optical flow fusion for the specified instance
     // An out of range instance (eg -1) returns data for the the primary instance
-    void getFlowDebug(int8_t instance, float &varFlow, float &gndOffset, float &flowInnovX, float &flowInnovY, float &auxInnov, float &HAGL, float &rngInnov, float &range, float &gndOffsetErr);
+    void getFlowDebug(int8_t instance, float &varFlow, float &gndOffset, float &flowInnovX, float &flowInnovY, float &auxInnovX, float &auxInnovY, float &HAGL, float &rngInnov, float &gndOffsetErr);
 
     /*
         Returns the following data for debugging range beacon fusion

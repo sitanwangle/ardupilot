@@ -167,14 +167,17 @@ void NavEKF3_core::EstimateTerrainOffset()
 
         if (fuseOptFlowData && !cantFuseFlowData) {
 
-            Vector3f relVelSensor; // velocity of sensor relative to ground in sensor axes
-            float losPred; // predicted optical flow angular rate measurement
+            // use state and observation models from
+            // https://github.com/PX4/ecl/tree/master/matlab/scripts/Terrain%20Estimator
+
+            Vector3f relVelSensor; // velocity of sensor relative to ground in sensor axes (m/s)
+            float losPred[2]; // predicted XY optical flow angular rate measurements (rad/s)
             float q0 = stateStruct.quat[0]; // quaternion at optical flow measurement time
             float q1 = stateStruct.quat[1]; // quaternion at optical flow measurement time
             float q2 = stateStruct.quat[2]; // quaternion at optical flow measurement time
             float q3 = stateStruct.quat[3]; // quaternion at optical flow measurement time
-            float K_OPT;
-            float H_OPT;
+            float K_OPT; // Kalman gain
+            float H_OPT[2]; // Observation Jacobian
 
             // predict range to centre of image
             float flowRngPred = MAX((terrainState - stateStruct.position[2]),rngOnGnd) / prevTnb.c.z;
@@ -187,68 +190,51 @@ void NavEKF3_core::EstimateTerrainOffset()
 
             // divide velocity by range, subtract body rates and apply scale factor to
             // get predicted sensed angular optical rates relative to X and Y sensor axes
-            losPred =   sqrtf(sq(relVelSensor.x) + sq(relVelSensor.y))/flowRngPred;
+            losPred[0] =  relVelSensor.y / flowRngPred;
+            losPred[1] = -relVelSensor.x / flowRngPred;
 
             // calculate innovations
-            auxFlowObsInnov = losPred - sqrtf(sq(ofDataDelayed.flowRadXYcomp.x) + sq(ofDataDelayed.flowRadXYcomp.y));
+            auxFlowObsInnov[0] = losPred[0] - ofDataDelayed.flowRadXYcomp.x;
+            auxFlowObsInnov[1] = losPred[1] - ofDataDelayed.flowRadXYcomp.y;
 
-            // calculate observation jacobian
-            float t3 = sq(q0);
-            float t4 = sq(q1);
-            float t5 = sq(q2);
-            float t6 = sq(q3);
-            float t10 = q0*q3*2.0f;
-            float t11 = q1*q2*2.0f;
-            float t14 = t3+t4-t5-t6;
-            float t15 = t14*stateStruct.velocity.x;
-            float t16 = t10+t11;
-            float t17 = t16*stateStruct.velocity.y;
-            float t18 = q0*q2*2.0f;
-            float t19 = q1*q3*2.0f;
-            float t20 = t18-t19;
-            float t21 = t20*stateStruct.velocity.z;
-            float t2 = t15+t17-t21;
-            float t7 = t3-t4-t5+t6;
-            float t8 = stateStruct.position[2]-terrainState;
-            float t9 = 1.0f/sq(t8);
-            float t24 = t3-t4+t5-t6;
-            float t25 = t24*stateStruct.velocity.y;
-            float t26 = t10-t11;
-            float t27 = t26*stateStruct.velocity.x;
-            float t28 = q0*q1*2.0f;
-            float t29 = q2*q3*2.0f;
-            float t30 = t28+t29;
-            float t31 = t30*stateStruct.velocity.z;
-            float t12 = t25-t27+t31;
-            float t13 = sq(t7);
-            float t22 = sq(t2);
-            float t23 = 1.0f/(t8*t8*t8);
-            float t32 = sq(t12);
-            H_OPT = 0.5f*(t13*t22*t23*2.0f+t13*t23*t32*2.0f)/sqrtf(t9*t13*t22+t9*t13*t32);
+            // calculate observation jacobians
+            float t2 = q0*q0;
+            float t3 = q1*q1;
+            float t4 = q2*q2;
+            float t5 = q3*q3;
+            float t6 = stateStruct.position.z-terrainState;
+            float t7 = 1.0f/(t6*t6);
+            float t8 = q0*q3*2.0f;
+            float t9 = t2-t3-t4+t5;
+            H_OPT[0] = -t7*t9*(stateStruct.velocity.z*(q0*q1*2.0f+q2*q3*2.0f)+stateStruct.velocity.y*(t2-t3+t4-t5)-stateStruct.velocity.x*(t8-q1*q2*2.0f));
+            H_OPT[1] = t7*t9*(-stateStruct.velocity.z*(q0*q2*2.0f-q1*q3*2.0f)+stateStruct.velocity.x*(t2+t3-t4-t5)+stateStruct.velocity.y*(t8+q1*q2*2.0f));
 
             // calculate innovation variances
-            auxFlowObsInnovVar = H_OPT*Popt*H_OPT + R_LOS;
+            for (uint8_t axis_index = 0; axis_index <= 1; axis_index++) {
+                auxFlowObsInnovVar[axis_index] = H_OPT[axis_index]*Popt*H_OPT[axis_index] + R_LOS;
 
-            // calculate Kalman gain
-            K_OPT = Popt*H_OPT/auxFlowObsInnovVar;
+                // calculate Kalman gain
+                K_OPT = Popt*H_OPT[axis_index]/auxFlowObsInnovVar[axis_index];
 
-            // calculate the innovation consistency test ratio
-            auxFlowTestRatio = sq(auxFlowObsInnov) / (sq(MAX(0.01f * (float)frontend->_flowInnovGate, 1.0f)) * auxFlowObsInnovVar);
+                // calculate the innovation consistency test ratio
+                auxFlowTestRatio[axis_index] = sq(auxFlowObsInnov[axis_index]) / (sq(MAX(0.01f * (float)frontend->_flowInnovGate, 1.0f)) * auxFlowObsInnovVar[axis_index]);
 
-            // don't fuse if optical flow data is outside valid range
-            if (MAX(ofDataDelayed.flowRadXY[0],ofDataDelayed.flowRadXY[1]) < frontend->_maxFlowRate) {
+                // don't fuse data if optical flow data is outside valid range or innovation test failed
+                if (fabsf(ofDataDelayed.flowRadXY[axis_index]) <= frontend->_maxFlowRate &&
+                        auxFlowTestRatio[axis_index] <= 1.0f) {
 
-                // correct the state
-                terrainState -= K_OPT * auxFlowObsInnov;
+                    // correct the state
+                    terrainState -= K_OPT * auxFlowObsInnov[axis_index];
 
-                // constrain the state
-                terrainState = MAX(terrainState, stateStruct.position[2] + rngOnGnd);
+                    // constrain the state
+                    terrainState = MAX(terrainState, stateStruct.position.z + rngOnGnd);
 
-                // correct the covariance
-                Popt = Popt - K_OPT * H_OPT * Popt;
+                    // correct the covariance
+                    Popt = Popt - K_OPT * H_OPT[axis_index] * Popt;
 
-                // prevent the state variances from becoming negative
-                Popt = MAX(Popt,0.0f);
+                    // prevent the state variances from becoming negative
+                    Popt = MAX(Popt,0.0f);
+                }
             }
         }
     }

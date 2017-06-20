@@ -206,7 +206,7 @@ public:
     void writeOptFlowMeas(uint8_t &rawFlowQuality, Vector2f &rawFlowRates, Vector2f &rawGyroRates, uint32_t &msecFlowMeas, const Vector3f &posOffset);
 
     // return data for debugging optical flow fusion
-    void getFlowDebug(float &varFlow, float &gndOffset, float &flowInnovX, float &flowInnovY, float &auxInnov, float &HAGL, float &rngInnov, float &range, float &gndOffsetErr) const;
+    void getFlowDebug(float &varFlow, float &gndOffset, float &flowInnovX, float &flowInnovY, float &auxInnovX, float &auxInnovY, float &HAGL, float &rngInnov, float &gndOffsetErr) const;
 
     /*
      * Write body frame linear and angular displacement measurements from a visual odometry sensor
@@ -991,8 +991,8 @@ private:
     bool flowDataToFuse;            // true when optical flow data has is ready for fusion
     bool flowDataValid;             // true while optical flow data is still fresh
     bool fuseOptFlowData;           // this boolean causes the last optical flow measurement to be fused
-    float auxFlowObsInnov;          // optical flow rate innovation from 1-state terrain offset estimator
-    float auxFlowObsInnovVar;       // innovation variance for optical flow observations from 1-state terrain offset estimator
+    float auxFlowObsInnov[2];       // XY optical flow rate innovations from 1-state terrain offset estimator (rad/sec)
+    float auxFlowObsInnovVar[2];    // XY innovation variances for optical flow observations from 1-state terrain offset estimator (rad^2)
     uint32_t flowValidMeaTime_ms;   // time stamp from latest valid flow measurement (msec)
     uint32_t rngValidMeaTime_ms;    // time stamp from latest valid range measurement (msec)
     uint32_t flowMeaTime_ms;        // time stamp from latest flow measurement (msec)
@@ -1010,7 +1010,7 @@ private:
     bool inhibitGndState;           // true when the terrain position state is to remain constant
     uint32_t prevFlowFuseTime_ms;   // time both flow measurement components passed their innovation consistency checks
     Vector2 flowTestRatio;          // square of optical flow innovations divided by fail threshold used by main filter where >1.0 is a fail
-    float auxFlowTestRatio;         // sum of squares of optical flow innovation divided by fail threshold used by 1-state terrain offset estimator
+    float auxFlowTestRatio[2];      // XY flow observation innovation variance test ratio from 1-state terrain offset estimator
     float R_LOS;                    // variance of optical flow rate measurements (rad/sec)^2
     float auxRngTestRatio;          // square of range finder innovations divided by fail threshold used by main filter where >1.0 is a fail
     Vector2f flowGyroBias;          // bias error of optical flow sensor gyro output
