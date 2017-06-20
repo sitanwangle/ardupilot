@@ -867,11 +867,11 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
         normInnov : (uint8_t)(MIN(100*normInnov,255)),
         FIX : (int16_t)(1000*flowInnovX),
         FIY : (int16_t)(1000*flowInnovY),
-        AFI : (int16_t)(1000*auxFlowInnov),
+        AFIX : (int16_t)(1000*auxFlowInnov),
+        AFIY : (int16_t)0,
         HAGL : (int16_t)(100*HAGL),
         offset : (int16_t)(100*gndOffset),
         RI : (int16_t)(100*rngInnov),
-        meaRng : (uint16_t)(100*range),
         errHAGL : (uint16_t)(100*gndOffsetErr),
         angErr : (float)predictorErrors.x,
         velErr : (float)predictorErrors.y,
@@ -1192,13 +1192,12 @@ void DataFlash_Class::Log_Write_EKF3(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
     float normInnov=0; // normalised innovation variance ratio for optical flow observations fused by the main nav filter
     float gndOffset=0; // estimated vertical position of the terrain relative to the nav filter zero datum
     float flowInnovX=0, flowInnovY=0; // optical flow LOS rate vector innovations from the main nav filter
-    float auxFlowInnov=0; // optical flow LOS rate innovation from terrain offset estimator
+    float auxFlowInnovX=0, auxFlowInnovY=0; // optical flow LOS rate innovation from terrain offset estimator
     float HAGL=0; // height above ground level
     float rngInnov=0; // range finder innovations
-    float range=0; // measured range
     float gndOffsetErr=0; // filter ground offset state error
     Vector3f predictorErrors; // output predictor angle, velocity and position tracking error
-    ahrs.get_NavEKF3().getFlowDebug(-1,normInnov, gndOffset, flowInnovX, flowInnovY, auxFlowInnov, HAGL, rngInnov, range, gndOffsetErr);
+    ahrs.get_NavEKF3().getFlowDebug(-1,normInnov, gndOffset, flowInnovX, flowInnovY, auxFlowInnovX, auxFlowInnovY, HAGL, rngInnov, gndOffsetErr);
     ahrs.get_NavEKF3().getOutputTrackingError(-1,predictorErrors);
     struct log_NKF5 pkt5 = {
         LOG_PACKET_HEADER_INIT(LOG_XKF5_MSG),
@@ -1206,11 +1205,11 @@ void DataFlash_Class::Log_Write_EKF3(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
         normInnov : (uint8_t)(MIN(100*normInnov,255)),
         FIX : (int16_t)(1000*flowInnovX),
         FIY : (int16_t)(1000*flowInnovY),
-        AFI : (int16_t)(1000*auxFlowInnov),
+        AFIX : (int16_t)(1000*auxFlowInnovX),
+        AFIY : (int16_t)(1000*auxFlowInnovY),
         HAGL : (int16_t)(100*HAGL),
         offset : (int16_t)(100*gndOffset),
         RI : (int16_t)(100*rngInnov),
-        meaRng : (uint16_t)(100*range),
         errHAGL : (uint16_t)(100*gndOffsetErr),
         angErr : (float)predictorErrors.x,
         velErr : (float)predictorErrors.y,
