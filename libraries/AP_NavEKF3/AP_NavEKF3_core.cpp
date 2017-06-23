@@ -322,6 +322,7 @@ void NavEKF3_core::InitialiseVariables()
     posOffsetNED.zero();
     posResetSource = DEFAULT;
     velResetSource = DEFAULT;
+    indoorFlightMode = true;
 
     // range beacon fusion variables
     memset(&rngBcnDataNew, 0, sizeof(rngBcnDataNew));
@@ -1422,32 +1423,52 @@ void NavEKF3_core::ConstrainVariances()
     }
 
     if (!inhibitDelVelBiasStates) {
-        // limit delta velocity bias state variance levels and request a reset if below the safe minimum
-        bool resetRequired = false;
-        for (uint8_t i=13; i<=15; i++) {
-            if (P[i][i] > 1E-9f) {
-                // variance is above the safe minimum
-                P[i][i] = fminf(P[i][i], sq(10.0f * dtEkfAvg));
-            } else {
-                // Set the variance to the target minimum and request a covariance reset
-                P[i][i] = 1E-8f;
-                resetRequired = true;
+        if (!indoorFlightMode) {
+            // limit delta velocity bias state variance levels and request a reset if below the safe minimum
+            bool resetRequired = false;
+            for (uint8_t i=13; i<=15; i++) {
+                if (P[i][i] > 1E-9f) {
+                    // variance is above the safe minimum
+                    P[i][i] = fminf(P[i][i], sq(10.0f * dtEkfAvg));
+                } else {
+                    // Set the variance to the target minimum and request a covariance reset
+                    P[i][i] = 1E-8f;
+                    resetRequired = true;
+                }
             }
-        }
 
-        // If any one axis is below the safe minimum, all delta velocity covariance terms must be reset to zero
-        if (resetRequired) {
-            float delVelBiasVar[3];
-            // store all delta velocity bias variances
-            for (uint8_t i=0; i<=2; i++) {
-                delVelBiasVar[i] = P[i+13][i+13];
+            // If any one axis is below the safe minimum, all delta velocity covariance terms must be reset to zero
+            if (resetRequired) {
+                float delVelBiasVar[3];
+                // store all delta velocity bias variances
+                for (uint8_t i=0; i<=2; i++) {
+                    delVelBiasVar[i] = P[i+13][i+13];
+                }
+                // reset all delta velocity bias covariances
+                zeroCols(P,13,15);
+                // restore all delta velocity bias variances
+                for (uint8_t i=0; i<=2; i++) {
+                    P[i+13][i+13] = delVelBiasVar[i];
+                }
             }
-            // reset all delta velocity bias covariances
-            zeroCols(P,13,15);
-            // restore all delta velocity bias variances
-            for (uint8_t i=0; i<=2; i++) {
-                P[i+13][i+13] = delVelBiasVar[i];
+
+        } else {
+            // deactivate learning of specified axes when operating indoors because bias learning is unreliable
+            for (uint8_t i=13; i<=15; i++) {
+                if (frontend->_indoorModeControl & (1<<(i-13))) {
+                    zeroCols(P,i,i);
+                    zeroRows(P,i,i);
+                } else {
+                    if (P[i][i] > 1E-8f) {
+                        // variance is above the safe minimum so constrain the maximum value
+                        P[i][i] = fminf(P[i][i], sq(10.0f * dtEkfAvg));
+                    } else {
+                        // Set the variance to the target minimum
+                        P[i][i] = 1E-8f;
+                    }
+                }
             }
+
         }
 
     } else {
@@ -1485,7 +1506,20 @@ void NavEKF3_core::ConstrainStates()
     // gyro bias limit (this needs to be set based on manufacturers specs)
     for (uint8_t i=10; i<=12; i++) statesArray[i] = constrain_float(statesArray[i],-GYRO_BIAS_LIMIT*dtEkfAvg,GYRO_BIAS_LIMIT*dtEkfAvg);
     // the accelerometer bias limit is controlled by a user adjustable parameter
-    for (uint8_t i=13; i<=15; i++) statesArray[i] = constrain_float(statesArray[i],-frontend->_accBiasLim*dtEkfAvg,frontend->_accBiasLim*dtEkfAvg);
+    if (!indoorFlightMode) {
+        for (uint8_t i=13; i<=15; i++) {
+                statesArray[i] = constrain_float(statesArray[i],-frontend->_accBiasLim*dtEkfAvg,frontend->_accBiasLim*dtEkfAvg);
+        }
+    } else {
+        // constrain specified axes to zero when operating indoors becasue bias learning is unreliable
+        for (uint8_t i=13; i<=15; i++) {
+            if (frontend->_indoorModeControl & (1<<(i-13))) {
+                statesArray[i] = 0.0f;
+            } else {
+                statesArray[i] = constrain_float(statesArray[i],-frontend->_accBiasLim*dtEkfAvg,frontend->_accBiasLim*dtEkfAvg);
+            }
+        }
+    }
     // earth magnetic field limit
     for (uint8_t i=16; i<=18; i++) statesArray[i] = constrain_float(statesArray[i],-1.0f,1.0f);
     // body magnetic field limit

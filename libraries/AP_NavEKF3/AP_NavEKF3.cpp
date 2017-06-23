@@ -548,6 +548,14 @@ const AP_Param::GroupInfo NavEKF3::var_info[] = {
     // @RebootRequired: True
     AP_GROUPINFO("OGN_HGT_MASK", 50, NavEKF3, _originHgtMode, 0),
 
+    // @Param: INDOOR_MASK
+    // @DisplayName: Bitmask control of indoor operation
+    // @Description: When a height sensor other than GPS is used as the primary height source by the EKF, the position of the zero height datum is defined by that sensor and its frame of reference. If a GPS height measurement is also available, then the height of the WGS-84 height datum used by the EKF can be corrected so that the height returned by the getLLH() function is compensated for primary height sensor drift and change in datum over time. The first two bit positions control when the height datum will be corrected. Correction is performed using a Bayes filter and only operates when GPS quality permits. The third bit position controls where the corrections to the GPS reference datum are applied. Corrections can be applied to the local vertical position (default) or to the reported EKF origin height.
+    // @Bitmask: 0:Inhibit X accel bias, 1:Inhibit Y accel bias, 2:Inhibit Z accel bias, 3:Inhibit mag bias
+    // @User: Advanced
+    // @RebootRequired: True
+    AP_GROUPINFO("INDOOR_MASK", 51, NavEKF3, _indoorModeControl, 0),
+
     AP_GROUPEND
 };
 

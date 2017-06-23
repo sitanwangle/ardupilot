@@ -105,7 +105,7 @@ void NavEKF3_core::setWindMagStateLearningMode()
     bool magCalDenied = !use_compass() || (magCal == 2) || (onGround && magCal != 4);
 
     // Inhibit the magnetic field calibration if not requested or denied
-    bool setMagInhibit = !magCalRequested || magCalDenied;
+    bool setMagInhibit = !magCalRequested || magCalDenied || (indoorFlightMode && (frontend->_indoorModeControl & (1<<3)));
     if (!inhibitMagStates && setMagInhibit) {
         inhibitMagStates = true;
         updateStateIndexLim();
