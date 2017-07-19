@@ -1085,6 +1085,7 @@ private:
     bool bodyVelFusionActive;           // true when body frame velocity fusion is active
 
     // yaw sensor fusion
+    uint32_t yawMeasTime_ms;
     obs_ring_buffer_t<yaw_elements> storedYawAng;
     yaw_elements yawAngDataNew;
     yaw_elements yawAngDataDelayed;

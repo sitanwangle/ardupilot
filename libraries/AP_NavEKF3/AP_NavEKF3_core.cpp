@@ -377,6 +377,11 @@ void NavEKF3_core::InitialiseVariables()
     bodyVelFusionDelayed = false;
     bodyVelFusionActive = false;
 
+    // yaw sensor fusion
+    yawMeasTime_ms = 0;
+    memset(&yawAngDataNew, 0, sizeof(yawAngDataNew));
+    memset(&yawAngDataDelayed, 0, sizeof(yawAngDataDelayed));
+
     // zero data buffers
     storedIMU.reset();
     storedGPS.reset();
