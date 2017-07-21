@@ -1583,7 +1583,7 @@ void NavEKF3_core::SelectBodyOdomFusion()
             // get the unit vector from the projection of the X axis onto the horizontal
             Vector3f unitVec;
             unitVec.x = prevTnb.a.x;
-            unitVec.y = prevTnb.b.x;
+            unitVec.y = prevTnb.a.y;
             unitVec.z = 0.0f;
             unitVec.normalized();
 
