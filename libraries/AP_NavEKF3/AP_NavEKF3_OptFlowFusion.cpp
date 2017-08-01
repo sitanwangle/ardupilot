@@ -47,7 +47,7 @@ void NavEKF3_core::SelectFlowFusion()
     // Constrain measurements to zero if takeoff is not detected and the height above ground
     // is insuffient to achieve acceptable focus. This allows the vehicle to be picked up
     // and carried to test optical flow operation
-    if (!takeOffDetected && ((terrainState - stateStruct.position.z) < 0.5f)) {
+    if (!takeOffDetected && (fabsf(terrainState - stateStruct.position.z) < 0.5f)) {
         ofDataDelayed.flowRadXYcomp.zero();
         ofDataDelayed.flowRadXY.zero();
         flowDataValid = true;
@@ -86,8 +86,15 @@ void NavEKF3_core::EstimateTerrainOffset()
     // start performance timer
     hal.util->perf_begin(_perf_TerrainOffset);
 
-    // constrain height above ground to be above range measured on ground
-    float heightAboveGndEst = MAX((terrainState - stateStruct.position.z), rngOnGnd);
+    // constrain height relative to the surface the flow sensor is using as a reference
+    float heightAboveGndEst;
+    if (frontend->_invertedFlow == 1) {
+        // surface is above
+        heightAboveGndEst = MIN((terrainState - stateStruct.position.z), -rngOnGnd);
+    } else {
+        // surface is below
+        heightAboveGndEst = MAX((terrainState - stateStruct.position.z), rngOnGnd);
+    }
 
     // calculate a predicted LOS rate squared
     float velHorizSq = sq(stateStruct.velocity.x) + sq(stateStruct.velocity.y);
@@ -121,7 +128,14 @@ void NavEKF3_core::EstimateTerrainOffset()
         // fuse range finder data
         if (rangeDataToFuse) {
             // predict range
-            float predRngMeas = MAX((terrainState - stateStruct.position[2]),rngOnGnd) / prevTnb.c.z;
+            float predRngMeas;
+            if (frontend->_invertedFlow == 1) {
+                // surface is above
+                predRngMeas = MAX((stateStruct.position[2] - terrainState),rngOnGnd) / prevTnb.c.z;
+            } else {
+                // surface is below
+                predRngMeas = MAX((terrainState - stateStruct.position[2]),rngOnGnd) / prevTnb.c.z;
+            }
 
             // Copy required states to local variable names
             float q0 = stateStruct.quat[0]; // quaternion at optical flow measurement time
@@ -139,8 +153,14 @@ void NavEKF3_core::EstimateTerrainOffset()
             // Calculate the innovation variance for data logging
             varInnovRng = (R_RNG + Popt/sq(SK_RNG));
 
-            // constrain terrain height to be below the vehicle
-            terrainState = MAX(terrainState, stateStruct.position[2] + rngOnGnd);
+            // constrain terrain position relative to the surface the optical flow sensor is using
+            if (frontend->_invertedFlow) {
+                // surface is above the vehicle
+                terrainState = MIN(terrainState, stateStruct.position[2] - rngOnGnd);
+            } else {
+                // surface is below the vehicle
+                terrainState = MAX(terrainState, stateStruct.position[2] + rngOnGnd);
+            }
 
             // Calculate the measurement innovation
             innovRng = predRngMeas - rangeDataDelayed.rng;
@@ -150,11 +170,21 @@ void NavEKF3_core::EstimateTerrainOffset()
 
             // Check the innovation test ratio and don't fuse if too large
             if (auxRngTestRatio < 1.0f) {
-                // correct the state
-                terrainState -= K_RNG * innovRng;
+                if (frontend->_invertedFlow == 1) {
+                    // correct the state assuming the range finder is inverted
+                    terrainState += K_RNG * innovRng;
 
-                // constrain the state
-                terrainState = MAX(terrainState, stateStruct.position[2] + rngOnGnd);
+                    // constrain the terrain state to be always above the vehicle
+                    terrainState = MIN(terrainState, stateStruct.position[2] - rngOnGnd);
+
+                } else {
+                    // correct the state assuming the terrain is always below the vehicle
+                    terrainState -= K_RNG * innovRng;
+
+                    // constrain the terrain state to be always below the vehicle
+                    terrainState = MAX(terrainState, stateStruct.position[2] + rngOnGnd);
+
+                }
 
                 // correct the covariance
                 Popt = Popt - sq(Popt)/(SK_RNG*(R_RNG + Popt/sq(SK_RNG))*(sq(q0) - sq(q1) - sq(q2) + sq(q3)));
@@ -176,11 +206,18 @@ void NavEKF3_core::EstimateTerrainOffset()
             float K_OPT;
             float H_OPT;
 
-            // predict range to centre of image
-            float flowRngPred = MAX((terrainState - stateStruct.position[2]),rngOnGnd) / prevTnb.c.z;
-
-            // constrain terrain height to be below the vehicle
-            terrainState = MAX(terrainState, stateStruct.position[2] + rngOnGnd);
+            // predict range to centre of image - negative when flow sensor is looking upwards
+            // constrain terrain height to be above or below the vehicle
+            float flowRngPred;
+            if (frontend->_invertedFlow == 1) {
+                // surface is above the vehicle
+                flowRngPred = MIN((terrainState - stateStruct.position[2]), -rngOnGnd) / prevTnb.c.z;
+                terrainState = MIN(terrainState, stateStruct.position[2] - rngOnGnd);
+            } else {
+                // surface is below the vehicle
+                flowRngPred = MAX((terrainState - stateStruct.position[2]), rngOnGnd) / prevTnb.c.z;
+                terrainState = MAX(terrainState, stateStruct.position[2] + rngOnGnd);
+            }
 
             // calculate relative velocity in sensor frame
             relVelSensor = prevTnb*stateStruct.velocity;
@@ -280,8 +317,15 @@ void NavEKF3_core::FuseOptFlow()
     float vd = stateStruct.velocity.z;
     float pd = stateStruct.position.z;
 
-    // constrain height above ground to be above range measured on ground
-    float heightAboveGndEst = MAX((terrainState - pd), rngOnGnd);
+    // constrain height relative to surface flow sensor is looking at
+    float heightAboveGndEst;
+    if (frontend->_invertedFlow == 1) {
+        // surface is above the vehicle
+        heightAboveGndEst = MIN((terrainState - pd), -rngOnGnd);
+    } else {
+        // surface is below the vehicle
+        heightAboveGndEst = MAX((terrainState - pd), rngOnGnd);
+    }
     float ptd = pd + heightAboveGndEst;
 
     // Calculate common expressions for observation jacobians

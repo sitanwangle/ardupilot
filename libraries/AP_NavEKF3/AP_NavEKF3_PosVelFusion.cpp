@@ -146,12 +146,18 @@ void NavEKF3_core::ResetHeight(void)
     outputDataDelayed.position.z = stateStruct.position.z;
 
     // reset the terrain state height
-    if (onGround) {
+    if (onGround &&  !(frontend->_invertedFlow == 1)) {
         // assume vehicle is sitting on the ground
         terrainState = stateStruct.position.z + rngOnGnd;
     } else {
-        // can make no assumption other than vehicle is not below ground level
-        terrainState = MAX(stateStruct.position.z + rngOnGnd , terrainState);
+        // can make no assumption other than vehicle is not on the other side of the reference surface
+        if (frontend->_invertedFlow == 1) {
+            // reference surface is above vehicle
+            terrainState = MIN(stateStruct.position.z - rngOnGnd , terrainState);
+        } else {
+            // reference surface is below vehicle
+            terrainState = MAX(stateStruct.position.z + rngOnGnd , terrainState);
+        }
     }
     for (uint8_t i=0; i<imu_buffer_length; i++) {
         storedOutput[i].position.z = stateStruct.position.z;
@@ -772,8 +778,8 @@ void NavEKF3_core::selectHeightForFusion()
         } else {
             // determine if we are above or below the height switch region
             float rangeMaxUse = 1e-4f * (float)frontend->_rng.max_distance_cm_orient(ROTATION_PITCH_270) * (float)frontend->_useRngSwHgt;
-            bool aboveUpperSwHgt = (terrainState - stateStruct.position.z) > rangeMaxUse;
-            bool belowLowerSwHgt = (terrainState - stateStruct.position.z) < 0.7f * rangeMaxUse;
+            bool aboveUpperSwHgt = fabsf(terrainState - stateStruct.position.z) > rangeMaxUse;
+            bool belowLowerSwHgt = fabsf(terrainState - stateStruct.position.z) < 0.7f * rangeMaxUse;
 
             // If the terrain height is consistent and we are moving slowly, then it can be
             // used as a height reference in combination with a range finder

@@ -575,6 +575,13 @@ const AP_Param::GroupInfo NavEKF3::var_info[] = {
     // @Units: m/s
     AP_GROUPINFO("WENC_VERR", 53, NavEKF3, _wencOdmVelErr, 0.1f),
 
+    // @Param: INV_FLOW
+    // @DisplayName: Flow sensor and range finder are inverted
+    // @Description: Set to 1 if the flow sensor and range finder are inverted (pointing upwards)
+    // @Range: 0 1
+    // @User: Advanced
+    AP_GROUPINFO("INV_FLOW", 54, NavEKF3, _invertedFlow, 0),
+
     AP_GROUPEND
 };
 

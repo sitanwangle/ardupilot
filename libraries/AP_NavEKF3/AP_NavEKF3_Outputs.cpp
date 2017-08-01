@@ -110,8 +110,8 @@ bool NavEKF3_core::getRangeBeaconDebug(uint8_t &ID, float &rng, float &innov, fl
 // this is needed to ensure the vehicle does not fly too high when using optical flow navigation
 bool NavEKF3_core::getHeightControlLimit(float &height) const
 {
-    // only ask for limiting if we are doing optical flow navigation
-    if (frontend->_fusionModeGPS == 3) {
+    // only ask for limiting if we are doing optical flow navigation using a surface below the vehicle
+    if ((frontend->_fusionModeGPS == 3) && (frontend->_invertedFlow != 1)) {
         // If are doing optical flow nav, ensure the height above ground is within range finder limits after accounting for vehicle tilt and control errors
         height = MAX(float(frontend->_rng.max_distance_cm_orient(ROTATION_PITCH_270)) * 0.007f - 1.0f, 1.0f);
         // If we are are not using the range finder as the height reference, then compensate for the difference between terrain and EKF origin
@@ -364,10 +364,19 @@ void NavEKF3_core::getEkfControlLimits(float &ekfGndSpdLimit, float &ekfNavVelGa
     // If relying on optical flow, limit speed to prevent sensor limit being exceeded and adjust
     // nav gains to prevent body rate feedback into flow rates destabilising the control loop
     if (PV_AidingMode == AID_RELATIVE && relyingOnFlowData) {
+        // calculate the distance to the optical flow reference surface
+        float refDist;
+        if (frontend->_invertedFlow == 1) {
+            // we are using a surface above the vehicle
+            refDist = MAX((stateStruct.position[2] - terrainState), rngOnGnd);
+        } else {
+            // we are using a surface below the vehicle
+            refDist = MAX((terrainState - stateStruct.position[2]), rngOnGnd);
+        }
         // allow 1.0 rad/sec margin for angular motion
-        ekfGndSpdLimit = MAX((frontend->_maxFlowRate - 1.0f), 0.0f) * MAX((terrainState - stateStruct.position[2]), rngOnGnd);
-        // use standard gains up to 5.0 metres height and reduce above that
-        ekfNavVelGainScaler = 4.0f / MAX((terrainState - stateStruct.position[2]),4.0f);
+        ekfGndSpdLimit = MAX((frontend->_maxFlowRate - 1.0f), 0.0f) * refDist;
+        // use standard gains up to 4.0 metres distance and reduce above that
+        ekfNavVelGainScaler = 4.0f / MAX(refDist,4.0f);
     } else {
         ekfGndSpdLimit = 400.0f; //return 80% of max filter speed
         ekfNavVelGainScaler = 1.0f;
