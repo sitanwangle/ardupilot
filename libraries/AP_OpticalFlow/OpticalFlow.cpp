@@ -65,6 +65,13 @@ const AP_Param::GroupInfo OpticalFlow::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("_BUS_ID", 5,  OpticalFlow, _bus_id,   0),
     
+    // @Param: ORIENT
+    // @DisplayName: Sensor orientation
+    // @Description: The orientation of the flow sensor relative to the autopilot board. The correct orientation should give sensor body rates that agree with the autopilot board's IMU rates. X axis forward, the Y axis to the right and the Z axis down.
+    // @Values: 0:None,1:Yaw45,2:Yaw90,3:Yaw135,4:Yaw180,5:Yaw225,6:Yaw270,7:Yaw315,8:Roll180,9:Roll180Yaw45,10:Roll180Yaw90,11:Roll180Yaw135,12:Pitch180,13:Roll180Yaw225,14:Roll180Yaw270,15:Roll180Yaw315
+    // @User: Advanced
+    AP_GROUPINFO("ORIENT", 6, OpticalFlow, _orientation, ROTATION_NONE),
+
     AP_GROUPEND
 };
 

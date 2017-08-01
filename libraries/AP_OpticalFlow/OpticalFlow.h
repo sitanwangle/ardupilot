@@ -75,6 +75,8 @@ public:
         return _pos_offset;
     }
 
+    AP_Int8 _orientation;           // orientation of the sensor axes relative to body axes
+
 private:
     AP_AHRS_NavEKF &_ahrs;
     OpticalFlow_backend *backend;

@@ -115,12 +115,15 @@ void AP_OpticalFlow_PX4Flow::timer(void)
         float integralToRate = 1.0e6 / frame.integration_timespan;
         
         state.surface_quality = frame.qual;
-        state.flowRate = Vector2f(frame.pixel_flow_x_integral * flowScaleFactorX,
-                                  frame.pixel_flow_y_integral * flowScaleFactorY) * 1.0e-4 * integralToRate;
-        state.bodyRate = Vector2f(frame.gyro_x_rate_integral, frame.gyro_y_rate_integral) * 1.0e-4 * integralToRate;
-        
-        _applyYaw(state.flowRate);
-        _applyYaw(state.bodyRate);
+        Vector3f flowRate = Vector3f(frame.pixel_flow_x_integral * flowScaleFactorX,
+                             frame.pixel_flow_y_integral * flowScaleFactorY,
+                             0.0f) * 1.0e-4 * integralToRate;
+        Vector3f bodyRate = Vector3f(frame.gyro_x_rate_integral, frame.gyro_y_rate_integral, frame.gyro_z_rate_integral) * 1.0e-4 * integralToRate;
+        flowRate.rotate(frontend._orientation);
+        bodyRate.rotate(frontend._orientation);
+        state.flowRate = Vector2f(flowRate.x , flowRate.y);;
+        state.bodyRate = Vector2f(bodyRate.x , bodyRate.y);
+
     }
 
     _update_frontend(state);
