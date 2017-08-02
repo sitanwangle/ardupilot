@@ -90,6 +90,8 @@ bool AP_OpticalFlow_PX4Flow::setup_sensor(void)
     // read at 10Hz
     dev->register_periodic_callback(100000, FUNCTOR_BIND_MEMBER(&AP_OpticalFlow_PX4Flow::timer, void));
     return true;
+
+    _sensor_orientation = (enum Rotation)frontend._orientation.get();
 }
 
 
@@ -119,8 +121,10 @@ void AP_OpticalFlow_PX4Flow::timer(void)
                              frame.pixel_flow_y_integral * flowScaleFactorY,
                              0.0f) * 1.0e-4 * integralToRate;
         Vector3f bodyRate = Vector3f(frame.gyro_x_rate_integral, frame.gyro_y_rate_integral, frame.gyro_z_rate_integral) * 1.0e-4 * integralToRate;
-        flowRate.rotate(frontend._orientation);
-        bodyRate.rotate(frontend._orientation);
+
+        flowRate.rotate(_sensor_orientation);
+        bodyRate.rotate(_sensor_orientation);
+
         state.flowRate = Vector2f(flowRate.x , flowRate.y);;
         state.bodyRate = Vector2f(bodyRate.x , bodyRate.y);
 

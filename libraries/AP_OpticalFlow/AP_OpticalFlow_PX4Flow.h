@@ -38,6 +38,8 @@ private:
         uint8_t qual;
     };
     
+    enum Rotation _sensor_orientation = ROTATION_NONE;
+
     // scan I2C bus addresses and buses
     bool scan_buses(void);
 
