@@ -722,7 +722,8 @@ void NavEKF2_core::readRngBcnData()
     }
 
     // Check if the beacon system has returned a 3D fix
-    if (beacon->get_vehicle_position_ned(beaconVehiclePosNED, beaconVehiclePosErr)) {
+    uint32_t time_ms = 0;
+    if (beacon->get_vehicle_position_ned(beaconVehiclePosNED, beaconVehiclePosErr, time_ms)) {
         rngBcnLast3DmeasTime_ms = imuSampleTime_ms;
     }
 
