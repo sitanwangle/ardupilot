@@ -44,7 +44,8 @@ void loop(void)
     beacon.update();
     Vector3f pos;
     float accuracy = 0.0f;
-    beacon.get_vehicle_position_ned(pos, accuracy);
+    uint32_t time_ms = 0;
+    beacon.get_vehicle_position_ned(pos, accuracy, time_ms);
     if (pos.x > 0.001f) {
         printf("%f %f %f\n", static_cast<double>(pos.x), static_cast<double>(pos.y), static_cast<double>(pos.z));
         count++;

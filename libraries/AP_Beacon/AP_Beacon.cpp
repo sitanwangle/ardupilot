@@ -146,7 +146,7 @@ bool AP_Beacon::get_origin(Location &origin_loc) const
 }
 
 // return position in NED from position estimate system's origin in meters
-bool AP_Beacon::get_vehicle_position_ned(Vector3f &position, float& accuracy_estimate) const
+bool AP_Beacon::get_vehicle_position_ned(Vector3f &position, float& accuracy_estimate, uint32_t &time_ms) const
 {
     if (!device_ready()) {
         return false;
@@ -160,6 +160,7 @@ bool AP_Beacon::get_vehicle_position_ned(Vector3f &position, float& accuracy_est
     // return position
     position = veh_pos_ned;
     accuracy_estimate = veh_pos_accuracy;
+    time_ms = veh_pos_update_ms;
     return true;
 }
 
