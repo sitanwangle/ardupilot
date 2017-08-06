@@ -1790,7 +1790,8 @@ void DataFlash_Class::Log_Write_Beacon(AP_Beacon &beacon)
     // position
     Vector3f pos;
     float accuracy = 0.0f;
-    beacon.get_vehicle_position_ned(pos, accuracy);
+    uint32_t time_ms = 0;
+    beacon.get_vehicle_position_ned(pos, accuracy, time_ms);
 
     struct log_Beacon pkt_beacon = {
        LOG_PACKET_HEADER_INIT(LOG_BEACON_MSG),
