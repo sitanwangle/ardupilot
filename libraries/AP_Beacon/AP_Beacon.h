@@ -66,7 +66,7 @@ public:
     bool get_origin(Location &origin_loc) const;
 
     // return vehicle position in NED from position estimate system's origin in meters
-    bool get_vehicle_position_ned(Vector3f& pos, float& accuracy_estimate) const;
+    bool get_vehicle_position_ned(Vector3f& pos, float& accuracy_estimate, uint32_t& time_ms) const;
 
     // return the number of beacons
     uint8_t count() const;
