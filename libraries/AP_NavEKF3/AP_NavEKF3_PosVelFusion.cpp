@@ -103,7 +103,7 @@ void NavEKF3_core::ResetPosition(void)
             posTimeout = false;
             lastPosPassTime_ms = imuSampleTime_ms;
         } else if ((imuSampleTime_ms - rngBcnLast3DmeasTime_ms < 250 && posResetSource == DEFAULT) || posResetSource == RNGBCN) {
-            // use the range beacon data as a second preference
+            // use the range beacon data
             stateStruct.position.x = receiverPos.x;
             stateStruct.position.y = receiverPos.y;
             // set the variances from the beacon alignment filter
@@ -112,6 +112,17 @@ void NavEKF3_core::ResetPosition(void)
             // clear the timeout flags and counters
             rngBcnTimeout = false;
             lastRngBcnPassTime_ms = imuSampleTime_ms;
+        } else if (((imuSampleTime_ms - posDataNew.time_ms) < 250 && posResetSource == DEFAULT) || posResetSource == POSBCN) {
+            // use the range beacon position data directly
+            stateStruct.position.x = posDataDelayed.pos.x;
+            stateStruct.position.y = posDataDelayed.pos.y;
+            // set the variances from the beacon alignment filter
+            P[7][7] = sq(posDataDelayed.posErr);
+            P[8][8] = sq(posDataDelayed.posErr);
+            // clear the timeout flags and counters
+            // clear the timeout flags and counters
+            posTimeout = false;
+            lastPosPassTime_ms = imuSampleTime_ms;
         }
     }
     for (uint8_t i=0; i<imu_buffer_length; i++) {
@@ -132,6 +143,9 @@ void NavEKF3_core::ResetPosition(void)
 
     // clear reset source preference
     posResetSource = DEFAULT;
+
+    // alert on position reset
+    gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u position reset to %3.1fN , %3.1fE (m)",(unsigned)imu_index,(double)stateStruct.position.x,(double)stateStruct.position.y);
 
 }
 
@@ -239,8 +253,9 @@ void NavEKF3_core::SelectVelPosFusion()
     // read GPS data from the sensor and check for new data in the buffer
     readGpsData();
     gpsDataToFuse = storedGPS.recall(gpsDataDelayed,imuDataDelayed.time_ms);
+
     // Determine if we need to fuse position and velocity data on this time step
-    if (gpsDataToFuse && PV_AidingMode == AID_ABSOLUTE) {
+    if ((gpsDataToFuse) && (PV_AidingMode == AID_ABSOLUTE) && (posAidSource == POS_AID_GPS)) {
         // correct GPS data for position offset of antenna phase centre relative to the IMU
         Vector3f posOffsetBody = _ahrs->get_gps().get_antenna_offset(gpsDataDelayed.sensor_idx) - accelPosOffset;
         if (!posOffsetBody.is_zero()) {
@@ -255,8 +270,19 @@ void NavEKF3_core::SelectVelPosFusion()
             gpsDataDelayed.pos.x -= posOffsetEarth.x;
             gpsDataDelayed.pos.y -= posOffsetEarth.y;
             gpsDataDelayed.hgt += posOffsetEarth.z;
+            posMeaNE = gpsDataDelayed.pos;
         }
 
+        // calculate the observation noise required for data fusion
+        // Use GPS reported position accuracy if available and floor at value set by GPS position noise parameter
+        if (gpsPosAccuracy > 0.0f) {
+            // we use the GPS receivers supplied error estimate if provided, but bound it
+            posMeaErrVarNE = sq(constrain_float(gpsPosAccuracy, frontend->_gpsHorizPosNoise, 100.0f));
+        } else {
+            // No GPs provided error is supplied, so use parameter value with additional error caused by manoeuvres.
+            float posErr = frontend->gpsPosVarAccScale * accNavMag;
+            posMeaErrVarNE = sq(constrain_float(frontend->_gpsHorizPosNoise, 0.1f, 10.0f)) + sq(posErr);
+        }
 
         // Don't fuse velocity data if GPS doesn't support it
         if (frontend->_fusionModeGPS <= 1) {
@@ -390,12 +416,9 @@ void NavEKF3_core::FuseVelPosNED()
         observation[0] = gpsDataDelayed.vel.x;
         observation[1] = gpsDataDelayed.vel.y;
         observation[2] = gpsDataDelayed.vel.z;
-        observation[3] = gpsDataDelayed.pos.x;
-        observation[4] = gpsDataDelayed.pos.y;
+        observation[3] = posMeaNE.x;
+        observation[4] = posMeaNE.y;
         observation[5] = -hgtMea;
-
-        // calculate additional error in GPS position caused by manoeuvring
-        float posErr = frontend->gpsPosVarAccScale * accNavMag;
 
         // estimate the GPS Velocity, GPS horiz position and height measurement variances.
         // Use different errors if operating without external aiding using an assumed position or velocity of zero
@@ -423,20 +446,16 @@ void NavEKF3_core::FuseVelPosNED()
                 R_OBS[2] = sq(constrain_float(frontend->_gpsVertVelNoise,  0.05f, 5.0f)) + sq(frontend->gpsDVelVarAccScale  * accNavMag);
             }
             R_OBS[1] = R_OBS[0];
+
             // Use GPS reported position accuracy if available and floor at value set by GPS position noise parameter
-            if (gpsPosAccuracy > 0.0f) {
-                R_OBS[3] = sq(constrain_float(gpsPosAccuracy, frontend->_gpsHorizPosNoise, 100.0f));
-            } else {
-                R_OBS[3] = sq(constrain_float(frontend->_gpsHorizPosNoise, 0.1f, 10.0f)) + sq(posErr);
-            }
-            R_OBS[4] = R_OBS[3];
-            // For data integrity checks we use the same measurement variances as used to calculate the Kalman gains for all measurements except GPS horizontal velocity
-            // For horizontal GPs velocity we don't want the acceptance radius to increase with reported GPS accuracy so we use a value based on best GPs perfomrance
-            // plus a margin for manoeuvres. It is better to reject GPS horizontal velocity errors early
-            for (uint8_t i=0; i<=2; i++) R_OBS_DATA_CHECKS[i] = sq(constrain_float(frontend->_gpsHorizVelNoise, 0.05f, 5.0f)) + sq(frontend->gpsNEVelVarAccScale * accNavMag);
+            R_OBS[4] = R_OBS[3] = posMeaErrVarNE;
+
         }
+
         R_OBS[5] = posDownObsNoise;
-        for (uint8_t i=3; i<=5; i++) R_OBS_DATA_CHECKS[i] = R_OBS[i];
+
+        // define the assumed observation variance used for data integrity checks
+        for (uint8_t i=0; i<=5; i++) R_OBS_DATA_CHECKS[i] = R_OBS[i];
 
         // if vertical GPS velocity data and an independent height source is being used, check to see if the GPS vertical velocity and altimeter
         // innovations have the same sign and are outside limits. If so, then it is likely aliasing is affecting
@@ -814,7 +833,7 @@ void NavEKF3_core::selectHeightForFusion()
         }
     } else if ((frontend->_altSource == 2) && ((imuSampleTime_ms - lastTimeGpsReceived_ms) < 500) && validOrigin && gpsAccuracyGood) {
         activeHgtSource = HGT_SOURCE_GPS;
-    } else if ((frontend->_altSource == 3) && validOrigin && rngBcnGoodToAlign) {
+    } else if ((frontend->_altSource == 3) && validOrigin && (rngBcnGoodToAlign || (posAidSource == POS_AID_BCN))) {
         activeHgtSource = HGT_SOURCE_BCN;
     } else {
         activeHgtSource = HGT_SOURCE_BARO;

@@ -17,6 +17,10 @@ extern const AP_HAL::HAL& hal;
 // select fusion of range beacon measurements
 void NavEKF3_core::SelectRngBcnFusion()
 {
+    if (frontend->_bcnType != 1) {
+        return;
+    }
+
     // read range data from the sensor and check for new data in the buffer
     readRngBcnData();
 
@@ -45,6 +49,41 @@ void NavEKF3_core::SelectRngBcnFusion()
             // record that the beacon origin needs to be initialised
             bcnOriginEstInit = false;
         }
+    }
+}
+
+// select fusion of range beacon measurements
+void NavEKF3_core::SelectPosBcnFusion()
+{
+    if (frontend->_bcnType != 2) {
+        return;
+    }
+
+    // read range data from the sensor and check for new data in the buffer
+    readPosBcnData();
+
+    // Determine if we need to fuse range beacon data on this time step
+    if (posBcnDataToFuse && (PV_AidingMode == AID_ABSOLUTE) && (posAidSource == POS_AID_BCN)) {
+        posMeaNE.x = posDataDelayed.pos.x;
+        posMeaNE.y = posDataDelayed.pos.y;
+        posMeaErrVarNE = sq(posDataDelayed.posErr);
+        posDownObsNoise = 2.0f * posMeaErrVarNE; // This is a hack - scale up the vertical error to allow for geometric dilution of precision
+        fusePosData = true;
+        fuseVelData = false;
+
+        if (frontend->_altSource == 3) {
+            hgtMea = -posDataDelayed.pos.z;
+            fuseHgtData = true;
+        } else {
+            fuseHgtData = false;
+        }
+
+        FuseVelPosNED();
+
+        fusePosData = false;
+        fuseHgtData = false;
+        fuseVelData = false;
+
     }
 }
 
@@ -85,8 +124,9 @@ void NavEKF3_core::FuseRngBcn()
     // calculate measurement innovation
     innovRngBcn = rngPred - rngBcnDataDelayed.rng;
 
-    // perform fusion of range measurement
-    if (rngPred > 0.1f)
+    // perform fusion of range measurement if not too close to beacon which can destabilise filter
+    float rngMin = 0.01f * frontend->_rngInnovGate * rngBcnDataDelayed.rngErr;
+    if ((rngPred > rngMin) && (rngBcnDataDelayed.rng > rngMin))
     {
         // calculate observation jacobians
         float H_BCN[24];
@@ -297,7 +337,6 @@ void NavEKF3_core::FuseRngBcnStatic()
         if (rngBcnDataDelayed.beacon_ID != lastBeaconIndex) {
             rngBcnPosSum += rngBcnDataDelayed.beacon_posNED;
             lastBeaconIndex = rngBcnDataDelayed.beacon_ID;
-            rngSum += rngBcnDataDelayed.rng;
             numBcnMeas++;
 
             // capture the beacon vertical spread
@@ -309,16 +348,14 @@ void NavEKF3_core::FuseRngBcnStatic()
         }
         if (numBcnMeas >= 100) {
             rngBcnAlignmentStarted = true;
-            float tempVar = 1.0f / (float)numBcnMeas;
-            // initialise the receiver position to the centre of the beacons and at zero height
-            receiverPos.x = rngBcnPosSum.x * tempVar;
-            receiverPos.y = rngBcnPosSum.y * tempVar;
+            // initialise the receiver position to the reported beacon system location horizontally
+            receiverPos.x = beaconVehiclePosNED.x;
+            receiverPos.y = beaconVehiclePosNED.y;
             receiverPos.z = 0.0f;
-            receiverPosCov[2][2] = receiverPosCov[1][1] = receiverPosCov[0][0] = rngSum * tempVar;
+            receiverPosCov[2][2] = receiverPosCov[1][1] = receiverPosCov[0][0] = sq(3.0f * rngBcnDataDelayed.rngErr);
             lastBeaconIndex  = 0;
             numBcnMeas = 0;
             rngBcnPosSum.zero();
-            rngSum = 0.0f;
         }
     }
 
@@ -639,6 +676,51 @@ void NavEKF3_core::CalcRangeBeaconPosDownOffset(float obsVar, Vector3f &vehicleP
 
     // apply the vertical offset to the beacon positions
     rngBcnDataDelayed.beacon_posNED.z += bcnPosOffsetNED.z;
+}
+
+void NavEKF3_core::resetRngBcnVariables()
+{
+    // range beacon fusion variables
+    rngBcnStoreIndex = 0;
+    lastRngBcnPassTime_ms = 0;
+    rngBcnTestRatio = 0.0f;
+    rngBcnHealth = false;
+    rngBcnTimeout = true;
+    varInnovRngBcn = 0.0f;
+    innovRngBcn = 0.0f;
+    memset(&lastTimeRngBcn_ms, 0, sizeof(lastTimeRngBcn_ms));
+    rngBcnDataToFuse = false;
+    beaconVehiclePosNED.zero();
+    beaconVehiclePosErr = 1.0f;
+    rngBcnLast3DmeasTime_ms = 0;
+    rngBcnGoodToAlign = false;
+    lastRngBcnChecked = 0;
+    receiverPos.zero();
+    memset(&receiverPosCov, 0, sizeof(receiverPosCov));
+    rngBcnAlignmentStarted =  false;
+    rngBcnAlignmentCompleted = false;
+    lastBeaconIndex = 0;
+    rngBcnPosSum.zero();
+    numBcnMeas = 0;
+    N_beacons = 0;
+    maxBcnPosD = 0.0f;
+    minBcnPosD = 0.0f;
+    bcnPosDownOffsetMax = 0.0f;
+    bcnPosOffsetMaxVar = 0.0f;
+    maxOffsetStateChangeFilt = 0.0f;
+    bcnPosDownOffsetMin = 0.0f;
+    bcnPosOffsetMinVar = 0.0f;
+    minOffsetStateChangeFilt = 0.0f;
+    rngBcnFuseDataReportIndex = 0;
+    memset(&rngBcnFusionReport, 0, sizeof(rngBcnFusionReport));
+    bcnPosOffsetNED.zero();
+    bcnOriginEstInit = false;
+
+    // direct fusion of beacon system position data
+    posBcnDataToFuse = false;
+    posBcnGoodToAlign = false;
+    lastFailPosBcnMeasTime_ms = imuSampleTime_ms;
+
 }
 
 #endif // HAL_CPU_CLASS

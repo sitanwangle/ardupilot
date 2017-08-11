@@ -469,6 +469,12 @@ private:
         uint8_t     sensor_idx;     // integer either 0 or 1 uniquely identifying up to two range sensors
     };
 
+    struct position_elements {
+        Vector3f    pos;            // NED position measurement (m)
+        float       posErr;         // NED position error 1-std (m)
+        uint32_t    time_ms;        // measurement timestamp (msec)
+    };
+
     struct rng_bcn_elements {
         float       rng;            // range measurement to each beacon (m)
         Vector3f    beacon_posNED;  // NED position of the beacon (m)
@@ -633,11 +639,17 @@ private:
     // check for new range beacon data and update stored measurements if available
     void readRngBcnData();
 
+    // check for new position beacon data and update stored measurements if available
+    void readPosBcnData();
+
     // determine when to perform fusion of GPS position and  velocity measurements
     void SelectVelPosFusion();
 
     // determine when to perform fusion of range measurements take realtive to a beacon at a known NED position
     void SelectRngBcnFusion();
+
+    // determine when to perform fusion of NED position measurements from the beacon system
+    void SelectPosBcnFusion();
 
     // determine when to perform fusion of magnetometer measurements
     void SelectMagFusion();
@@ -675,6 +687,9 @@ private:
 
     // return true if the filter to be ready to use the beacon range measurements
     bool readyToUseRangeBeacon(void) const;
+
+    // return true if the filter to be ready to use the beacon position measurements
+    bool readyToUsePositionBeacon(void) const;
 
     // Check for filter divergence
     void checkDivergence(void);
@@ -794,6 +809,9 @@ private:
 
     // Update the state index limit based on which states are active
     void updateStateIndexLim(void);
+
+    // Reset all variables used by range beacon fusion
+    void resetRngBcnVariables(void);
     
     // Variables
     bool statesInitialised;         // boolean true when filter states have been initialised
@@ -975,7 +993,8 @@ private:
                     FLOW=3,         // Use optical flow rates
                     BARO=4,         // Use Baro height
                     MAG=5,          // Use magnetometer data
-                    RNGFND=6        // Use rangefinder data
+                    RNGFND=6,       // Use rangefinder data
+                    POSBCN=7        // Use beacon position data
                         };
     resetDataSource posResetSource; // preferred soure of data for position reset
     resetDataSource velResetSource; // preferred source of data for a velocity reset
@@ -1028,7 +1047,9 @@ private:
     float prevPosE;                 // east position at last measurement
     float varInnovRng;              // range finder observation innovation variance (m^2)
     float innovRng;                 // range finder observation innovation (m)
-    float hgtMea;                   // height measurement derived from either baro, gps or range finder data (m)
+    float hgtMea;                   // height measurement derived from either baro, gps, range finder or position beacon data (m)
+    Vector2f posMeaNE;              // NE position measurement (m)
+    float posMeaErrVarNE;           // observation error variancefor the horizontal position measurement (m**2)
     bool inhibitGndState;           // true when the terrain position state is to remain constant
     uint32_t prevFlowFuseTime_ms;   // time both flow measurement components passed their innovation consistency checks
     Vector2 flowTestRatio;          // square of optical flow innovations divided by fail threshold used by main filter where >1.0 is a fail
@@ -1085,7 +1106,6 @@ private:
     wheel_odm_elements wheelOdmDataNew;       // Body frame odometry data at the current time horizon
     wheel_odm_elements wheelOdmDataDelayed;   // Body  frame odometry data at the fusion time horizon
 
-
     // Range Beacon Sensor Fusion
     obs_ring_buffer_t<rng_bcn_elements> storedRangeBeacon; // Beacon range buffer
     rng_bcn_elements rngBcnDataNew;     // Range beacon data at the current time horizon
@@ -1104,14 +1124,6 @@ private:
     uint32_t rngBcnLast3DmeasTime_ms;   // last time the beacon system returned a 3D fix (msec)
     bool rngBcnGoodToAlign;             // true when the range beacon systems 3D fix can be used to align the filter
     uint8_t lastRngBcnChecked;          // index of the last range beacon checked for data
-    Vector3f receiverPos;               // receiver NED position (m) - alignment 3 state filter
-    float receiverPosCov[3][3];         // Receiver position covariance (m^2) - alignment 3 state filter (
-    bool rngBcnAlignmentStarted;        // True when the initial position alignment using range measurements has started
-    bool rngBcnAlignmentCompleted;      // True when the initial position alignment using range measurements has finished
-    uint8_t lastBeaconIndex;            // Range beacon index last read -  used during initialisation of the 3-state filter
-    Vector3f rngBcnPosSum;              // Sum of range beacon NED position (m) - used during initialisation of the 3-state filter
-    uint8_t numBcnMeas;                 // Number of beacon measurements - used during initialisation of the 3-state filter
-    float rngSum;                       // Sum of range measurements (m) - used during initialisation of the 3-state filter
     uint8_t N_beacons;                  // Number of range beacons in use
     float maxBcnPosD;                   // maximum position of all beacons in the down direction (m)
     float minBcnPosD;                   // minimum position of all beacons in the down direction (m)
@@ -1128,6 +1140,15 @@ private:
     Vector3f bcnPosOffsetNED;           // NED position of the beacon origin in earth frame (m)
     bool bcnOriginEstInit;              // True when the beacon origin has been initialised
 
+    // Variables used by 3-state filter used to initialise the range beacon solution
+    Vector3f receiverPos;               // receiver NED position (m) - alignment 3 state filter
+    float receiverPosCov[3][3];         // Receiver position covariance (m^2) - alignment 3 state filter (
+    bool rngBcnAlignmentStarted;        // True when the initial position alignment using range measurements has started
+    bool rngBcnAlignmentCompleted;      // True when the initial position alignment using range measurements has finished
+    uint8_t lastBeaconIndex;            // Range beacon index last read -  used during initialisation of the 3-state filter
+    Vector3f rngBcnPosSum;              // Sum of range beacon NED position (m) - used during initialisation of the 3-state filter
+    uint16_t numBcnMeas;                // Number of beacon measurements - used during initialisation of the 3-state filter
+
     // Range Beacon Fusion Debug Reporting
     uint8_t rngBcnFuseDataReportIndex;// index of range beacon fusion data last reported
     struct {
@@ -1137,6 +1158,22 @@ private:
         float testRatio;    // innovation consistency test ratio
         Vector3f beaconPosNED; // beacon NED position
     } rngBcnFusionReport[10];
+
+    // direct fusion of beacon system position data
+    obs_ring_buffer_t<position_elements> storedPosBuffer; // position system data buffer
+    position_elements posDataNew;       // position system data at the current time horizon
+    position_elements posDataDelayed;   // position systems data at the fusion time horizon
+    bool posBcnDataToFuse;              // true when there is new range beacon data to fuse
+    bool posBcnGoodToAlign;             // true when the range beacon systems 3D fix can be used to align the filter
+    uint32_t lastFailPosBcnMeasTime_ms; // last time beacon position measurements failed arrival time or quality tests (mSec)
+
+    enum posAidSourceEnum {
+                    POS_AID_NONE = 0,      // No position data is being used
+                    POS_AID_GPS = 1,       // Use GPS position data
+                    POS_AID_BCN = 2        // Use beacon system position data
+                        };
+
+    posAidSourceEnum posAidSource;               // indicates which soure of data is being used as the position reference.
 
     // height source selection logic
     uint8_t activeHgtSource;    // integer defining active height source

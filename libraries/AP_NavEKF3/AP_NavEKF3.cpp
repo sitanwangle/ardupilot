@@ -575,6 +575,13 @@ const AP_Param::GroupInfo NavEKF3::var_info[] = {
     // @Units: m/s
     AP_GROUPINFO("WENC_VERR", 53, NavEKF3, _wencOdmVelErr, 0.1f),
 
+    // @Param: BCN_TYPE
+    // @DisplayName: Beacon fusion method
+    // @Description: Set to 1 to use range beacon method and 2 to use NED position provided by beacon system.
+    // @Values: 0:None, 1:Use range data, 2:Use position data
+    // @User: Advanced
+    AP_GROUPINFO("BCN_TYPE", 54, NavEKF3, _bcnType, 0),
+
     AP_GROUPEND
 };
 

@@ -425,6 +425,7 @@ private:
     AP_Float _visOdmVelErrMax;      // Observation 1-STD velocity error assumed for visual odometry sensor at lowest reported quality (m/s)
     AP_Float _visOdmVelErrMin;      // Observation 1-STD velocity error assumed for visual odometry sensor at highest reported quality (m/s)
     AP_Float _wencOdmVelErr;        // Observation 1-STD velocity error assumed for wheel odometry sensor (m/s)
+    AP_Int8 _bcnType;               // Specifies fusion method used for beacon system data
 
 
     // Tuning parameters
