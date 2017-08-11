@@ -136,6 +136,10 @@ bool NavEKF3_core::setup_core(NavEKF3 *_frontend, uint8_t _imu_index, uint8_t _c
     if(!storedRangeBeacon.init(imu_buffer_length)) {
         return false;
     }
+    // Note: position data is read can arrive at a high rate
+    if(!storedPosBuffer.init(imu_buffer_length)) {
+        return false;
+    }
     if(!storedIMU.init(imu_buffer_length)) {
         return false;
     }
@@ -325,45 +329,14 @@ void NavEKF3_core::InitialiseVariables()
     posOffsetNED.zero();
     posResetSource = DEFAULT;
     velResetSource = DEFAULT;
+    posAidSource = POS_AID_NONE;
 
-    // range beacon fusion variables
+    // range beacon system fusion
     memset(&rngBcnDataNew, 0, sizeof(rngBcnDataNew));
     memset(&rngBcnDataDelayed, 0, sizeof(rngBcnDataDelayed));
-    rngBcnStoreIndex = 0;
-    lastRngBcnPassTime_ms = 0;
-    rngBcnTestRatio = 0.0f;
-    rngBcnHealth = false;
-    rngBcnTimeout = true;
-    varInnovRngBcn = 0.0f;
-    innovRngBcn = 0.0f;
-    memset(&lastTimeRngBcn_ms, 0, sizeof(lastTimeRngBcn_ms));
-    rngBcnDataToFuse = false;
-    beaconVehiclePosNED.zero();
-    beaconVehiclePosErr = 1.0f;
-    rngBcnLast3DmeasTime_ms = 0;
-    rngBcnGoodToAlign = false;
-    lastRngBcnChecked = 0;
-    receiverPos.zero();
-    memset(&receiverPosCov, 0, sizeof(receiverPosCov));
-    rngBcnAlignmentStarted =  false;
-    rngBcnAlignmentCompleted = false;
-    lastBeaconIndex = 0;
-    rngBcnPosSum.zero();
-    numBcnMeas = 0;
-    rngSum = 0.0f;
-    N_beacons = 0;
-    maxBcnPosD = 0.0f;
-    minBcnPosD = 0.0f;
-    bcnPosDownOffsetMax = 0.0f;
-    bcnPosOffsetMaxVar = 0.0f;
-    maxOffsetStateChangeFilt = 0.0f;
-    bcnPosDownOffsetMin = 0.0f;
-    bcnPosOffsetMinVar = 0.0f;
-    minOffsetStateChangeFilt = 0.0f;
-    rngBcnFuseDataReportIndex = 0;
-    memset(&rngBcnFusionReport, 0, sizeof(rngBcnFusionReport));
-    bcnPosOffsetNED.zero();
-    bcnOriginEstInit = false;
+    memset(&posDataNew, 0, sizeof(posDataNew));
+    memset(&posDataDelayed, 0, sizeof(posDataDelayed));
+    resetRngBcnVariables();
 
     // body frame displacement fusion
     memset(&bodyOdmDataNew, 0, sizeof(bodyOdmDataNew));
@@ -390,6 +363,7 @@ void NavEKF3_core::InitialiseVariables()
     storedRangeBeacon.reset();
     storedBodyOdm.reset();
     storedWheelOdm.reset();
+    storedPosBuffer.reset();
 }
 
 // Initialise the states from accelerometer and magnetometer data (if present)
@@ -561,8 +535,11 @@ void NavEKF3_core::UpdateFilter(bool predict)
         // Update states using GPS and altimeter data
         SelectVelPosFusion();
 
-        // Update states using range beacon data
+        // Update states using beacon range data
         SelectRngBcnFusion();
+
+        // Update states using beacon position data
+        SelectPosBcnFusion();
 
         // Update states using optical flow data
         SelectFlowFusion();

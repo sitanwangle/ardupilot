@@ -525,15 +525,12 @@ void NavEKF3_core::readGpsData()
                 useGpsVertVel = false;
             }
 
-            // Monitor quality of the GPS velocity data before and after alignment using separate checks
-            if (PV_AidingMode != AID_ABSOLUTE) {
-                // Pre-alignment checks
+            // Monitor quality of the GPS data as being suitable for EKF alignment
+            if (posAidSource != POS_AID_GPS) {
                 gpsGoodToAlign = calcGpsGoodToAlign();
-            } else {
-                gpsGoodToAlign = false;
             }
 
-            // Post-alignment checks
+            // Monitor suitability of GPS data for flight
             calcGpsGoodForFlight();
 
             // Read the GPS location in WGS-84 lat,long,height coordinates
@@ -765,8 +762,9 @@ void NavEKF3_core::readRngBcnData()
     }
 
     // Check if the beacon system has returned a 3D fix
-    if (beacon->get_vehicle_position_ned(beaconVehiclePosNED, beaconVehiclePosErr)) {
-        rngBcnLast3DmeasTime_ms = imuSampleTime_ms;
+    uint32_t posTime_ms = 0;
+    if (beacon->get_vehicle_position_ned(beaconVehiclePosNED, beaconVehiclePosErr, posTime_ms)) {
+        rngBcnLast3DmeasTime_ms = posTime_ms;
     }
 
     // Check if the range beacon data can be used to align the vehicle position
@@ -811,6 +809,64 @@ void NavEKF3_core::readRngBcnData()
         rngBcnDataDelayed.beacon_posNED.x += bcnPosOffsetNED.x;
         rngBcnDataDelayed.beacon_posNED.y += bcnPosOffsetNED.y;
     }
+
+}
+
+/********************************************************
+*              Position Beacon Measurements             *
+********************************************************/
+
+// check for new position beacon data and push to data buffer if available
+void NavEKF3_core::readPosBcnData()
+{
+    // get the location of the beacon data
+    const AP_Beacon *beacon = _ahrs->get_beacon();
+
+    // exit immediately if no beacon object
+    if (beacon == nullptr) {
+        return;
+    }
+
+    // check that the beacon is healthy and has new data
+    if (beacon->get_vehicle_position_ned(posDataNew.pos, posDataNew.posErr, posDataNew.time_ms)) {
+        // Check if the beacon system has returned a 3D fix
+        if (posDataNew.time_ms != lastTimeRngBcn_ms[0]) {
+            // set the timestamp, correcting for measurement delay and average intersampling delay due to the filter update rate
+            lastTimeRngBcn_ms[0] = posDataNew.time_ms;
+            posDataNew.time_ms -= frontend->_rngBcnDelay_ms - localFilterTimeStep_ms/2;
+            storedPosBuffer.push(posDataNew);
+        }
+    }
+
+    // Check if the position beacon data can be used to align the vehicle position
+    if (((imuSampleTime_ms - posDataNew.time_ms) > 250) || (posDataNew.posErr > 5.0f)) {
+        lastFailPosBcnMeasTime_ms = imuSampleTime_ms;
+    }
+
+    // require a period of continuous good data before using range beacon position for alignment
+    if ((imuSampleTime_ms - lastFailPosBcnMeasTime_ms) > 5000) {
+        posBcnGoodToAlign = true;
+
+        // Set the EKF origin and magnetic field declination if not previously set
+        if (!validOrigin && PV_AidingMode != AID_ABSOLUTE) {
+            // get origin from beacon system
+            Location origin_loc;
+            if (beacon->get_origin(origin_loc)) {
+                setOriginLLH(origin_loc);
+
+                // set the NE earth magnetic field states using the published declination
+                // and set the corresponding variances and covariances
+                alignMagStateDeclination();
+
+            }
+        }
+    } else {
+        posBcnGoodToAlign = false;
+
+    }
+
+    // Check the buffer for measurements that have been overtaken by the fusion time horizon and need to be fused
+    posBcnDataToFuse = storedPosBuffer.recall(posDataDelayed,imuDataDelayed.time_ms);
 
 }
 

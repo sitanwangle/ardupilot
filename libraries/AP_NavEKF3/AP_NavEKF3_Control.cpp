@@ -208,10 +208,24 @@ void NavEKF3_core::setAidingMode()
         // and IMU gyro bias estimates have stabilised
         // If GPS usage has been prohiited then we use flow aiding provided optical flow data is present
         // GPS aiding is the preferred option unless excluded by the user
-        if(readyToUseGPS() || readyToUseRangeBeacon()) {
+        if (readyToUsePositionBeacon()) {
             PV_AidingMode = AID_ABSOLUTE;
+            posAidSource = POS_AID_BCN;
+            gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u is using beacon position",(unsigned)imu_index);
+
+        } else if  (readyToUseRangeBeacon()) {
+            PV_AidingMode = AID_ABSOLUTE;
+            gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u is using beacon range",(unsigned)imu_index);
+            // this data is fused as a range observation, not position.
+
+        } else if (readyToUseGPS()) {
+            PV_AidingMode = AID_ABSOLUTE;
+            posAidSource = POS_AID_GPS;
+            gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u is using GPS",(unsigned)imu_index);
+
         } else if (readyToUseOptFlow() || readyToUseBodyOdm()) {
             PV_AidingMode = AID_RELATIVE;
+
         }
     } else if (PV_AidingMode == AID_RELATIVE) {
          // Check if the fusion has timed out (flow measurements have been rejected for too long)
@@ -220,10 +234,25 @@ void NavEKF3_core::setAidingMode()
          bool bodyOdmFusionTimeout = ((imuSampleTime_ms - prevBodyVelFuseTime_ms) > 5000);
          // Enable switch to absolute position mode if GPS or range beacon data is available
          // If GPS or range beacons data is not available and flow fusion has timed out, then fall-back to no-aiding
-         if(readyToUseGPS() || readyToUseRangeBeacon()) {
+         if (readyToUsePositionBeacon()) {
              PV_AidingMode = AID_ABSOLUTE;
-         } else if (flowFusionTimeout && bodyOdmFusionTimeout) {
+             posAidSource = POS_AID_BCN;
+             gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u is using beacon position",(unsigned)imu_index);
+
+         } else if  (readyToUseRangeBeacon()) {
+             PV_AidingMode = AID_ABSOLUTE;
+             gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u is using beacon range",(unsigned)imu_index);
+             // this data is fused as a range observation, not position.
+
+         } else if (readyToUseGPS()) {
+             PV_AidingMode = AID_ABSOLUTE;
+             posAidSource = POS_AID_GPS;
+             gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u is using GPS",(unsigned)imu_index);
+
+         }  else if (flowFusionTimeout && bodyOdmFusionTimeout) {
              PV_AidingMode = AID_NONE;
+             gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u has stopped aiding",(unsigned)imu_index);
+
          }
      } else if (PV_AidingMode == AID_ABSOLUTE) {
          // Find the minimum time without data required to trigger any check
@@ -280,26 +309,61 @@ void NavEKF3_core::setAidingMode()
          if (attAidLossCritical) {
              // if the loss of attitude data is critical, then put the filter into a constant position mode
              PV_AidingMode = AID_NONE;
+             posAidSource  = POS_AID_NONE;
              posTimeout = true;
              velTimeout = true;
              rngBcnTimeout = true;
              tasTimeout = true;
              gpsNotAvailable = true;
+             gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u has stopped aiding",(unsigned)imu_index);
+
          } else if (posAidLossCritical) {
              // if the loss of position is critical, declare all sources of position aiding as being timed out
              posTimeout = true;
              velTimeout = true;
              rngBcnTimeout = true;
              gpsNotAvailable = true;
+
+             // Declare no aiding sources as being used. This will enable the EKF to start using
+             // the first available source that becomes available
+             posAidSource  = POS_AID_NONE;
+             gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u is drifting",(unsigned)imu_index);
+
+         }
+
+         if ((posAidSource == POS_AID_GPS) && (readyToUsePositionBeacon())) {
+             // If we are using GPS and beacon position data becomes available, then we change to use of the beacon as the position reference
+             // and reset the position states to the beacon measurement
+             posAidSource = POS_AID_BCN;
+             posResetSource = POSBCN;
+             ResetPosition();
+             gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u is using beacon position",(unsigned)imu_index);
+
+         } else if ((posAidSource == POS_AID_NONE) && (PV_AidingModePrev == AID_ABSOLUTE)) {
+             // Handle the case where we have been deadreckoning and start using the first avilable source of position
+             if (readyToUsePositionBeacon()) {
+                 posAidSource = POS_AID_BCN;
+                 posResetSource = POSBCN;
+                 gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u is using beacon position",(unsigned)imu_index);
+                 ResetPosition();
+
+             } else if (readyToUseGPS()) {
+                 posAidSource = POS_AID_GPS;
+                 posResetSource = GPS;
+                 gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u is using GPS",(unsigned)imu_index);
+                 ResetPosition();
+
+             }
          }
 
      }
 
-    // check to see if we are starting or stopping aiding and set states and modes as required
+    // check to see if we are changing aiding mode aiding and set states and modes as required
     if (PV_AidingMode != PV_AidingModePrev) {
         // set various  usage modes based on the condition when we start aiding. These are then held until aiding is stopped.
         switch (PV_AidingMode) {
         case AID_NONE:
+            posAidSource = POS_AID_NONE;
             // We have ceased aiding
             gcs().send_text(MAV_SEVERITY_WARNING, "EKF3 IMU%u stopped aiding",(unsigned)imu_index);
             // When not aiding, estimate orientation & height fusing synthetic constant position and zero velocity measurement to constrain tilt errors
@@ -319,11 +383,18 @@ void NavEKF3_core::setAidingMode()
             // reset relative aiding sensor fusion activity status
             flowFusionActive = false;
             bodyVelFusionActive = false;
+
+            if (PV_AidingModePrev == AID_ABSOLUTE) {
+                // enable use of of range beacon system to re-start
+                resetRngBcnVariables();
+            }
+
             break;
 
         case AID_RELATIVE:
             // We are doing relative position navigation where velocity errors are constrained, but position drift will occur
             gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u started relative aiding",(unsigned)imu_index);
+
             if (readyToUseOptFlow()) {
                 // Reset time stamps
                 flowValidMeaTime_ms = imuSampleTime_ms;
@@ -333,23 +404,27 @@ void NavEKF3_core::setAidingMode()
                 lastbodyVelPassTime_ms = imuSampleTime_ms;
                 prevBodyVelFuseTime_ms = imuSampleTime_ms;
             }
+
             posTimeout = true;
             velTimeout = true;
             break;
 
         case AID_ABSOLUTE:
-            if (readyToUseGPS()) {
-                // We are commencing aiding using GPS - this is the preferred method
-                posResetSource = GPS;
-                velResetSource = GPS;
-                gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u is using GPS",(unsigned)imu_index);
+            if (posAidSource == POS_AID_BCN) {
+                // We are commencing aiding using position beacons - this is the preferred method
+                posResetSource = POSBCN;
+                velResetSource = DEFAULT;
             } else if (readyToUseRangeBeacon()) {
                 // We are commencing aiding using range beacons
                 posResetSource = RNGBCN;
                 velResetSource = DEFAULT;
-                gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u is using range beacons",(unsigned)imu_index);
-                gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u initial pos NE = %3.1f,%3.1f (m)",(unsigned)imu_index,(double)receiverPos.x,(double)receiverPos.y);
+                gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u is using beacon range",(unsigned)imu_index);
                 gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u initial beacon pos D offset = %3.1f (m)",(unsigned)imu_index,(double)bcnPosOffsetNED.z);
+            }  else if (posAidSource == POS_AID_GPS) {
+                // We are commencing aiding using GPS
+                posResetSource = GPS;
+                velResetSource = GPS;
+                gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u is using GPS",(unsigned)imu_index);
             }
 
             // clear timeout flags as a precaution to avoid triggering any additional transitions
@@ -441,7 +516,13 @@ bool NavEKF3_core::readyToUseGPS(void) const
 // return true if the filter to be ready to use the beacon range measurements
 bool NavEKF3_core::readyToUseRangeBeacon(void) const
 {
-    return tiltAlignComplete && yawAlignComplete && delAngBiasLearned && rngBcnGoodToAlign && rngBcnDataToFuse;
+    return (frontend->_bcnType == 1) && tiltAlignComplete && yawAlignComplete && delAngBiasLearned && rngBcnGoodToAlign && rngBcnDataToFuse;
+}
+
+// return true if the filter to be ready to use the beacon position measurements
+bool NavEKF3_core::readyToUsePositionBeacon(void) const
+{
+    return (frontend->_bcnType == 2) && tiltAlignComplete && yawAlignComplete && delAngBiasLearned && posBcnGoodToAlign && posBcnDataToFuse;
 }
 
 // return true if we should use the compass
@@ -554,7 +635,7 @@ void  NavEKF3_core::updateFilterStatus(void)
     filterStatus.flags.takeoff_detected = takeOffDetected; // takeoff for optical flow navigation has been detected
     filterStatus.flags.takeoff = expectGndEffectTakeoff; // The EKF has been told to expect takeoff and is in a ground effect mitigation mode
     filterStatus.flags.touchdown = expectGndEffectTouchdown; // The EKF has been told to detect touchdown and is in a ground effect mitigation mode
-    filterStatus.flags.using_gps = ((imuSampleTime_ms - lastPosPassTime_ms) < 4000) && (PV_AidingMode == AID_ABSOLUTE);
+    filterStatus.flags.using_gps = ((imuSampleTime_ms - lastTimeGpsReceived_ms) < 4000) && ((imuSampleTime_ms - lastPosPassTime_ms) < 4000) && (PV_AidingMode == AID_ABSOLUTE);
     filterStatus.flags.gps_glitching = !gpsAccuracyGood && (PV_AidingMode == AID_ABSOLUTE); // The GPS is glitching
 }
 
