@@ -57,6 +57,9 @@ bool Copter::auto_init(bool ignore_checks)
 //      relies on run_autopilot being called at 10hz which handles decision making and non-navigation related commands
 void Copter::auto_run()
 {
+    // initialize smoothing gain
+    attitude_control->set_smoothing_gain(get_smoothing_gain());
+
     // call the correct auto controller
     switch (auto_mode) {
 

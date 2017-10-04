@@ -316,6 +316,9 @@ void Copter::guided_set_angle(const Quaternion &q, float climb_rate_cms, bool us
 // should be called at 100hz or more
 void Copter::guided_run()
 {
+    // initialize smoothing gain
+    attitude_control->set_smoothing_gain(get_smoothing_gain());
+
     // call the correct auto controller
     switch (guided_mode) {
 

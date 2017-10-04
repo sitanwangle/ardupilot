@@ -30,6 +30,9 @@ void Copter::stabilize_run()
     float target_yaw_rate;
     float pilot_throttle_scaled;
 
+    // initialize smoothing gain
+    attitude_control->set_smoothing_gain(get_smoothing_gain());
+
     // if not armed set throttle to zero and exit immediately
     if (!motors->armed() || ap.throttle_zero || !motors->get_interlock()) {
         motors->set_desired_spool_state(AP_Motors::DESIRED_SPIN_WHEN_ARMED);

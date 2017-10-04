@@ -40,6 +40,9 @@ bool Copter::brake_init(bool ignore_checks)
 // should be called at 100hz or more
 void Copter::brake_run()
 {
+    // initialize smoothing gain
+    attitude_control->set_smoothing_gain(get_smoothing_gain());
+
     // if not auto armed set throttle to zero and exit immediately
     if (!motors->armed() || !ap.auto_armed || !motors->get_interlock()) {
         wp_nav->init_brake_target(BRAKE_MODE_DECEL_RATE);

@@ -75,6 +75,9 @@ static struct {
 // poshold_init - initialise PosHold controller
 bool Copter::poshold_init(bool ignore_checks)
 {
+    // initialize smoothing gain
+    attitude_control->set_smoothing_gain(get_smoothing_gain());
+
 #if FRAME_CONFIG == HELI_FRAME
     // do not allow helis to enter Pos Hold if the Rotor Runup is not complete
     if (!ignore_checks && !motors->rotor_runup_complete()){

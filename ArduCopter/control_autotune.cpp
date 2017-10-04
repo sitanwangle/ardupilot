@@ -272,6 +272,9 @@ void Copter::autotune_run()
     float target_yaw_rate;
     int16_t target_climb_rate;
 
+    // initialize smoothing gain
+    attitude_control->set_smoothing_gain(get_smoothing_gain());
+
     // initialize vertical speeds and acceleration
     pos_control->set_speed_z(g2.pilot_velocity_z_dn, g.pilot_velocity_z_up);
     pos_control->set_accel_z(g.pilot_accel_z);

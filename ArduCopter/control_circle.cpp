@@ -36,6 +36,9 @@ void Copter::circle_run()
     float target_yaw_rate = 0;
     float target_climb_rate = 0;
 
+    // initialize smoothing gain
+    attitude_control->set_smoothing_gain(get_smoothing_gain());
+
     // initialize speeds and accelerations
     pos_control->set_speed_xy(wp_nav->get_speed_xy());
     pos_control->set_accel_xy(wp_nav->get_wp_acceleration());

@@ -100,6 +100,9 @@ void Copter::flip_run()
     float throttle_out;
     float recovery_angle;
 
+    // initialize smoothing gain
+    attitude_control->set_smoothing_gain(get_smoothing_gain());
+
     // if pilot inputs roll > 40deg or timeout occurs abandon flip
     if (!motors->armed() || (abs(channel_roll->get_control_in()) >= 4000) || (abs(channel_pitch->get_control_in()) >= 4000) || ((millis() - flip_start_time) > FLIP_TIMEOUT_MS)) {
         flip_state = Flip_Abandon;

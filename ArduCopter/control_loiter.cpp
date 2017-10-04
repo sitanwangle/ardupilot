@@ -83,6 +83,9 @@ void Copter::loiter_run()
     float target_climb_rate = 0.0f;
     float takeoff_climb_rate = 0.0f;
 
+    // initialize smoothing gain
+    attitude_control->set_smoothing_gain(get_smoothing_gain());
+
     // initialize vertical speed and acceleration
     pos_control->set_speed_z(g2.pilot_velocity_z_dn, g.pilot_velocity_z_up);
     pos_control->set_accel_z(g.pilot_accel_z);

@@ -44,6 +44,9 @@ bool Copter::land_init(bool ignore_checks)
 // should be called at 100hz or more
 void Copter::land_run()
 {
+    // initialize smoothing gain
+    attitude_control->set_smoothing_gain(get_smoothing_gain());
+
     if (land_with_gps) {
         land_gps_run();
     }else{

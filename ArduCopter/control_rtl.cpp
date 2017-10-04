@@ -40,6 +40,9 @@ void Copter::rtl_restart_without_terrain()
 // should be called at 100hz or more
 void Copter::rtl_run()
 {
+    // initialize smoothing gain
+    attitude_control->set_smoothing_gain(get_smoothing_gain());
+
     // check if we need to move to next state
     if (rtl_state_complete) {
         switch (rtl_state) {
