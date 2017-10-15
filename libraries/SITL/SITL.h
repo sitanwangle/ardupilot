@@ -124,8 +124,9 @@ public:
     AP_Int8  pin_mask; // for GPIO emulation
     AP_Float speedup; // simulation speedup
     AP_Int8  odom_enable; // enable visual odometry data
-    AP_Int8  bcn_disable; // disable simulated beacon positioning system
-    
+    AP_Int8  bcn_disable; // set to true to disable simulated beacon positioning system
+    AP_Int8  bcn_maxrng; // simulated beacon positioning system will stop working when distance from beacon origin exceeds this value (m)
+
     // wind control
     float wind_speed_active;
     float wind_direction_active;
