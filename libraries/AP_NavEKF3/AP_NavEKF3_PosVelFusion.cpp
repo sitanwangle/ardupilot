@@ -91,7 +91,7 @@ void NavEKF3_core::ResetPosition(void)
         P[7][7] = P[8][8] = sq(frontend->_gpsHorizPosNoise);
     } else  {
         // Use GPS data as first preference if fresh data is available
-        if ((imuSampleTime_ms - lastTimeGpsReceived_ms < 250 && posResetSource == DEFAULT) || posResetSource == GPS) {
+        if (((imuSampleTime_ms - lastTimeGpsReceived_ms < 250) && (posResetSource == DEFAULT)) || (posResetSource == GPS)) {
             // record the ID of the GPS for the data we are using for the reset
             last_gps_idx = gpsDataNew.sensor_idx;
             // write to state vector and compensate for offset  between last GPS measurement and the EKF time horizon
@@ -102,7 +102,9 @@ void NavEKF3_core::ResetPosition(void)
             // clear the timeout flags and counters
             posTimeout = false;
             lastPosPassTime_ms = imuSampleTime_ms;
-        } else if ((imuSampleTime_ms - rngBcnLast3DmeasTime_ms < 250 && posResetSource == DEFAULT) || posResetSource == RNGBCN) {
+            lastInnovPassTime_ms = imuSampleTime_ms;
+            gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u GPS reset to %3.1fN , %3.1fE (m)",(unsigned)imu_index,(double)stateStruct.position.x,(double)stateStruct.position.y);
+        } else if (((imuSampleTime_ms - rngBcnLast3DmeasTime_ms < 250) && (posResetSource == DEFAULT)) || (posResetSource == RNGBCN)) {
             // use the range beacon data
             stateStruct.position.x = receiverPos.x;
             stateStruct.position.y = receiverPos.y;
@@ -112,7 +114,8 @@ void NavEKF3_core::ResetPosition(void)
             // clear the timeout flags and counters
             rngBcnTimeout = false;
             lastRngBcnPassTime_ms = imuSampleTime_ms;
-        } else if (((imuSampleTime_ms - posDataNew.time_ms) < 250 && posResetSource == DEFAULT) || posResetSource == POSBCN) {
+            gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u range beacon reset to %3.1fN , %3.1fE (m)",(unsigned)imu_index,(double)stateStruct.position.x,(double)stateStruct.position.y);
+        } else if (((imuSampleTime_ms - posDataNew.time_ms) < 250) && (posResetSource == DEFAULT || posResetSource == POSBCN)) {
             // use the range beacon position data directly
             stateStruct.position.x = posDataDelayed.pos.x;
             stateStruct.position.y = posDataDelayed.pos.y;
@@ -123,6 +126,10 @@ void NavEKF3_core::ResetPosition(void)
             // clear the timeout flags and counters
             posTimeout = false;
             lastPosPassTime_ms = imuSampleTime_ms;
+            lastInnovPassTime_ms = imuSampleTime_ms;
+            gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u position beacon reset to %3.1fN , %3.1fE (m)",(unsigned)imu_index,(double)stateStruct.position.x,(double)stateStruct.position.y);
+        } else {
+            gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u position reset fail",(unsigned)imu_index);
         }
     }
     for (uint8_t i=0; i<imu_buffer_length; i++) {
@@ -143,9 +150,6 @@ void NavEKF3_core::ResetPosition(void)
 
     // clear reset source preference
     posResetSource = DEFAULT;
-
-    // alert on position reset
-    gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u position reset to %3.1fN , %3.1fE (m)",(unsigned)imu_index,(double)stateStruct.position.x,(double)stateStruct.position.y);
 
 }
 
@@ -270,8 +274,8 @@ void NavEKF3_core::SelectVelPosFusion()
             gpsDataDelayed.pos.x -= posOffsetEarth.x;
             gpsDataDelayed.pos.y -= posOffsetEarth.y;
             gpsDataDelayed.hgt += posOffsetEarth.z;
-            posMeaNE = gpsDataDelayed.pos;
         }
+        posMeaNE = gpsDataDelayed.pos;
 
         // calculate the observation noise required for data fusion
         // Use GPS reported position accuracy if available and floor at value set by GPS position noise parameter
