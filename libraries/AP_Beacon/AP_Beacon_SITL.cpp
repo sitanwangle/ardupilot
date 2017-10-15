@@ -57,7 +57,7 @@ bool AP_Beacon_SITL::healthy()
 void AP_Beacon_SITL::update(void)
 {
     uint32_t now = AP_HAL::millis();
-    if (now - last_update_ms < 10) {
+    if (!sitl->bcn_disable && (now - last_update_ms < 10)) {
         return;
     }
 
