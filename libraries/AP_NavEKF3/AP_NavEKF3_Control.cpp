@@ -338,7 +338,12 @@ void NavEKF3_core::setAidingMode()
              posResetSource = POSBCN;
              ResetPosition();
              gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u is using beacon position",(unsigned)imu_index);
-
+         } else if ((posAidSource == POS_AID_BCN) && (imuSampleTime_ms - lastPosPassTime_ms > 1000) && readyToUseGPS()) {
+             // If we have GPS and lose the range beacon system, then switch to GPS
+             posAidSource = POS_AID_GPS;
+             posResetSource = GPS;
+             ResetPosition();
+             gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u is using GPS",(unsigned)imu_index);
          } else if ((posAidSource == POS_AID_NONE) && (PV_AidingModePrev == AID_ABSOLUTE)) {
              // Handle the case where we have been deadreckoning and start using the first avilable source of position
              if (readyToUsePositionBeacon()) {
