@@ -123,7 +123,8 @@ public:
     AP_Int8  terrain_enable; // enable using terrain for height
     AP_Int8  pin_mask; // for GPIO emulation
     AP_Float speedup; // simulation speedup
-    AP_Int8  odom_enable; // enable visual odomotry data
+    AP_Int8  odom_enable; // enable visual odometry data
+    AP_Int8  bcn_disable; // disable simulated beacon positioning system
     
     // wind control
     float wind_speed_active;
