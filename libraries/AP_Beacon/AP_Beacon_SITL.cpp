@@ -104,6 +104,11 @@ void AP_Beacon_SITL::update(void)
     Vector3f beac_pos3d(beac_diff.x, beac_diff.y, (beacon_origin.alt - beacon_loc.alt)*1.0e-2);
     Vector3f beac_veh_offset = veh_pos3d - beac_pos3d;
 
+    // check if the vehicle is too far from the beacon system
+    if (veh_pos3d.length() > (float)sitl->bcn_maxrng) {
+        return;
+    }
+
     set_beacon_position(beacon_id, beac_pos3d);
     set_beacon_distance(beacon_id, beac_veh_offset.length());
     set_vehicle_position(veh_pos3d, 0.5f);
