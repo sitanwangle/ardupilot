@@ -194,6 +194,10 @@ public:
     // publish output observer angular, velocity and position tracking error
     void getOutputTrackingError(int8_t instance, Vector3f &error) const;
 
+    // return true if the EKF is using beacon data for the specified instance
+    // An out of range instance (eg -1) returns data for the the primary instance
+    bool usingBeaconData(int8_t instance) const;
+
     // return the innovation consistency test ratios for the specified instance
     // An out of range instance (eg -1) returns data for the the primary instance
     void getVariances(int8_t instance, float &velVar, float &posVar, float &hgtVar, Vector3f &magVar, float &tasVar, Vector2f &offset);

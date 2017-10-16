@@ -348,6 +348,9 @@ public:
     // publish output observer angular, velocity and position tracking error
     void getOutputTrackingError(Vector3f &error) const;
 
+    // return true if the EKF is using beacon data
+    bool usingBeaconData(void) const;
+
     // get the IMU index
     uint8_t getIMUIndex(void) const { return imu_index; }
 
