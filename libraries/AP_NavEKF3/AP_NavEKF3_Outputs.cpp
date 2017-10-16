@@ -624,4 +624,10 @@ void NavEKF3_core::getOutputTrackingError(Vector3f &error) const
     error = outputTrackError;
 }
 
+// return true if the EKF is using beacon data
+bool NavEKF3_core::usingBeaconData(void) const
+{
+    return posAidSource == POSBCN;
+}
+
 #endif // HAL_CPU_CLASS

@@ -1126,6 +1126,15 @@ void NavEKF3::getOutputTrackingError(int8_t instance, Vector3f &error) const
     }
 }
 
+// return true if the EKF is using beacon data
+bool NavEKF3::usingBeaconData(int8_t instance) const
+{
+    if (instance < 0 || instance >= num_cores) instance = primary;
+    if (core) {
+        return core[instance].usingBeaconData();
+    }
+}
+
 // return the innovation consistency test ratios for the velocity, position, magnetometer and true airspeed measurements
 void NavEKF3::getVariances(int8_t instance, float &velVar, float &posVar, float &hgtVar, Vector3f &magVar, float &tasVar, Vector2f &offset)
 {
