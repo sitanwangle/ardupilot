@@ -1066,7 +1066,9 @@ void AC_PosControl::check_for_ekf_xy_reset()
     Vector2f pos_shift;
     uint32_t reset_ms = _ahrs.getLastPosNorthEastReset(pos_shift);
     if (reset_ms != _ekf_xy_reset_ms) {
-        shift_pos_xy_target(pos_shift.x * 100.0f, pos_shift.y * 100.0f);
+        if (!_ahrs.using_beacon()) {
+            shift_pos_xy_target(pos_shift.x * 100.0f, pos_shift.y * 100.0f);
+        }
         _ekf_xy_reset_ms = reset_ms;
     }
 }
