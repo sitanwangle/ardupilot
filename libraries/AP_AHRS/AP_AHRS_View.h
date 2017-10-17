@@ -157,6 +157,11 @@ public:
         return ahrs.get_error_yaw();
     }
     
+    // return true if the AHRS object is doing navigation using beacon data,
+    bool using_beacon(void) const {
+        return ahrs.using_beacon();
+    }
+
     float roll;
     float pitch;
     float yaw;

@@ -143,6 +143,9 @@ public:
 
     bool have_inertial_nav() const override;
 
+    // return true if the AHRS object is doing navigation using beacon data,
+    bool using_beacon() const override;
+
     bool get_velocity_NED(Vector3f &vec) const override;
 
     // return the relative position NED to either home or origin
