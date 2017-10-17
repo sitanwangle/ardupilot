@@ -485,6 +485,27 @@ bool AP_AHRS_NavEKF::use_compass(void)
     return AP_AHRS_DCM::use_compass();
 }
 
+// true if beacon position data is being used as the primary source of data by the estimator
+bool AP_AHRS_NavEKF::using_beacon(void) const
+{
+    switch (active_EKF_type()) {
+    case EKF_TYPE_NONE:
+        return false;
+
+    case EKF_TYPE2:
+        return false;
+
+    case EKF_TYPE3:
+        return EKF3.usingBeaconData(-1);
+
+#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
+    case EKF_TYPE_SITL:
+        return false;
+#endif
+    }
+    return false;
+}
+
 
 // return secondary attitude solution if available, as eulers in radians
 bool AP_AHRS_NavEKF::get_secondary_attitude(Vector3f &eulers)

@@ -484,6 +484,11 @@ public:
         return false;
     }
 
+    // return true if the AHRS object is doing navigation using beacon data,
+    virtual bool using_beacon(void) const {
+        return false;
+    }
+
     // return the active accelerometer instance
     uint8_t get_active_accel_instance(void) const {
         return _active_accel_instance;
