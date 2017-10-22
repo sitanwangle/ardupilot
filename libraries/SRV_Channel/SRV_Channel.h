@@ -79,6 +79,7 @@ public:
         k_motor7                = 39,
         k_motor8                = 40,
         k_motor_tilt            = 41,            ///< tiltrotor motor tilt control
+        k_mrotor_yaw            = 42,            ///< copter yaw control pass through for sevo based yaw authority augmentation)
         k_rcin1                 = 51,            ///< these are for pass-thru from arbitrary rc inputs
         k_rcin2                 = 52,
         k_rcin3                 = 53,

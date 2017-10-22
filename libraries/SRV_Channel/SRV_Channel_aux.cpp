@@ -106,6 +106,11 @@ void SRV_Channel::aux_servo_function_setup(void)
     case k_steering:
     case k_flaperon1:
     case k_flaperon2:
+    case k_mrotor_yaw:
+        // used to send demanded yaw rate to a servo channel when augmentation of yaw authority
+        // via servo mechanism is required for multirotor applications
+        set_range(1000);
+        break;
     case k_tiltMotorLeft:
     case k_tiltMotorRight:
     case k_elevon_left:
