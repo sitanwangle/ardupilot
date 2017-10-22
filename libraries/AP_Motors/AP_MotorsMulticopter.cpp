@@ -182,6 +182,13 @@ const AP_Param::GroupInfo AP_MotorsMulticopter::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("GAIN_YAW", 37, AP_MotorsMulticopter, _gain_yaw, 1.0f),
 
+    // @Param: YAW_LIMIT
+    // @DisplayName: Scales the range of ESC PWM that the yaw control can access
+    // @Description: A value of 1.0 will allow the yaw controller to access the full ESC PWM range if available (default behaviour). Reduce to a value between 0.0 and 1.0 to limit how much change in PWM the yaw controller is allowed to produce.
+    // @Range: 0.0 1.0
+    // @User: Advanced
+    AP_GROUPINFO("YAW_LIMIT", 38, AP_MotorsMulticopter, _yaw_limit, AP_MOTORS_YAW_LIMIT_DEFAULT),
+
     AP_GROUPEND
 };
 
