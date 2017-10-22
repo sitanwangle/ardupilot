@@ -565,6 +565,13 @@ const AP_Param::Info Copter::var_info[] = {
     // @User: Advanced
     GSCALAR(acro_rp_expo,  "ACRO_RP_EXPO",    ACRO_RP_EXPO_DEFAULT),
 
+    // @Param: GAIN_AUX_YAW
+    // @DisplayName: Auxilliary yaw servo gain
+    // @Description: adjust to increase or decrease the amount of auxiliary yaw control servo movement
+    // @Range: 0.0 1.0
+    // @User: Advanced
+    GSCALAR(gain_aux_yaw,  "GAIN_AUX_YAW",    1.0f),
+
     // @Param: VEL_XY_P
     // @DisplayName: Velocity (horizontal) P gain
     // @Description: Velocity (horizontal) P gain.  Converts the difference between desired velocity to a target acceleration

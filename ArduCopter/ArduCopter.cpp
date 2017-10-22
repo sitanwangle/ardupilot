@@ -267,6 +267,12 @@ void Copter::fast_loop()
     // send outputs to the motors library immediately
     motors_output();
 
+    // drive augmented yaw authority servo
+    float temp = 500.0f + 500.0f * motors->get_yaw() * g.gain_aux_yaw;
+    if (SRV_Channels::function_assigned(SRV_Channel::k_mrotor_yaw)) {
+        SRV_Channels::set_output_scaled(SRV_Channel::k_mrotor_yaw, temp);
+    }
+
     // run EKF state estimator (expensive)
     // --------------------
     read_AHRS();

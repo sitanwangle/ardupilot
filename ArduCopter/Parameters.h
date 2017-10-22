@@ -129,7 +129,7 @@ public:
         k_param_acro_rp_expo,
         k_param_throttle_deadzone,
         k_param_optflow,
-        k_param_dcmcheck_thresh,        // deprecated - remove
+        k_param_gain_aux_yaw,
         k_param_log_bitmask,
         k_param_cli_enabled,
         k_param_throttle_filt,
@@ -469,6 +469,9 @@ public:
     AP_Float                acro_balance_pitch;
     AP_Int8                 acro_trainer;
     AP_Float                acro_rp_expo;
+
+    // Parameters controlling use of auxiliary servo for yaw augmentation
+    AP_Float                gain_aux_yaw; // gain scaler applied to the yaw command sent to the yaw servo
 
     // PI/D controllers
     AC_PI_2D                pi_vel_xy;
