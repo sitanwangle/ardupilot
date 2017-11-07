@@ -154,7 +154,8 @@ void Sub::update_optical_flow(void)
         Vector2f flowRate = optflow.flowRate();
         Vector2f bodyRate = optflow.bodyRate();
         const Vector3f &posOffset = optflow.get_pos_offset();
-        ahrs.writeOptFlowMeas(flowQuality, flowRate, bodyRate, last_of_update, posOffset);
+        float range = -1.0f; // set to a negative number if sensor range is not available
+        ahrs.writeOptFlowMeas(flowQuality, flowRate, bodyRate, last_of_update, range, posOffset);
         if (g.log_bitmask & MASK_LOG_OPTFLOW) {
             Log_Write_Optflow();
         }
