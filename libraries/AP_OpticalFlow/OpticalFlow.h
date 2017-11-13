@@ -77,6 +77,11 @@ public:
         return _pos_offset;
     }
 
+    // return a 3D vector defining the rotation matrix from body frame to sensor frame
+    const Matrix3f &get_sensor_rotmat(void) const {
+        return _sensor_rotmat;
+    }
+
     // parameter var info table
     static const struct AP_Param::GroupInfo var_info[];
 
@@ -94,9 +99,13 @@ private:
     AP_Int8  _enabled;              // enabled/disabled flag
     AP_Int16 _flowScalerX;          // X axis flow scale factor correction - parts per thousand
     AP_Int16 _flowScalerY;          // Y axis flow scale factor correction - parts per thousand
-    AP_Int16 _yawAngle_cd;          // yaw angle of sensor X axis with respect to vehicle X axis - centi degrees
     AP_Vector3f _pos_offset;        // position offset of the flow sensor in the body frame
     AP_Int8  _address;              // address on the bus (allows selecting between 8 possible I2C addresses for px4flow)
+    AP_Float _rot_x_deg;            // X-axis rotation from a ZYX Tait-Bryan rotation sequence defining the rotation from body frame to sensor frame (deg)
+    AP_Float _rot_y_deg;            // Y-axis rotation from a ZYX Tait-Bryan rotation sequence defining the rotation from body frame to sensor frame (deg)
+    AP_Float _rot_z_deg;            // Z-axis rotation from a ZYX Tait-Bryan rotation sequence defining the rotation from body frame to sensor frame (deg)
+
+    Matrix3f _sensor_rotmat;        // rotation matrix from body frame to sensor frame
 
     // state filled in by backend
     struct OpticalFlow_state _state;

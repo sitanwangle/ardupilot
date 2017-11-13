@@ -300,33 +300,35 @@ void NavEKF3_core::FuseOptFlow()
     SH_LOS[12] = pd-ptd;
     SH_LOS[13] = 1.0f/(SH_LOS[12]*SH_LOS[12]);
 
+    // calculate range from ground plain to centre of sensor fov assuming flat earth
+    float range = constrain_float((heightAboveGndEst/prevTnb.c.z),rngOnGnd,1000.0f);
+
+    // correct range for flow sensor offset body frame position offset
+    // the corrected value is the predicted range from the sensor focal point to the
+    // centre of the image on the ground assuming flat terrain
+    Vector3f posOffsetBody = (*ofDataDelayed.body_offset) - accelPosOffset;
+    if (!posOffsetBody.is_zero()) {
+        Vector3f posOffsetEarth = prevTnb.mul_transpose(posOffsetBody);
+        range -= posOffsetEarth.z / prevTnb.c.z;
+    }
+
+    // calculate relative velocity in sensor frame including the relative motion due to rotation
+    relVelSensor = (prevTnb * stateStruct.velocity) + (ofDataDelayed.bodyRadXYZ % posOffsetBody);
+
+    // divide velocity by range  to get predicted angular LOS rates relative to X and Y axes
+    losPred[0] =  relVelSensor.y/range;
+    losPred[1] = -relVelSensor.x/range;
+
+    // define the rotation from body frame to sensor frame
+    const float flow_rot_z = 0.0f;
+    const float flow_rot_y = 0.0f;
+    const float flow_rot_x = 0.0f;
+    Matrix3f Tbs;
+    Tbs.from_euler(flow_rot_x, flow_rot_y, flow_rot_z);
+    Tbs = Tbs.transposed();
+
     // Fuse X and Y axis measurements sequentially assuming observation errors are uncorrelated
     for (uint8_t obsIndex=0; obsIndex<=1; obsIndex++) { // fuse X axis data first
-        // calculate range from ground plain to centre of sensor fov assuming flat earth
-        float range = constrain_float((heightAboveGndEst/prevTnb.c.z),rngOnGnd,1000.0f);
-
-        // correct range for flow sensor offset body frame position offset
-        // the corrected value is the predicted range from the sensor focal point to the
-        // centre of the image on the ground assuming flat terrain
-        Vector3f posOffsetBody = (*ofDataDelayed.body_offset) - accelPosOffset;
-        if (!posOffsetBody.is_zero()) {
-            Vector3f posOffsetEarth = prevTnb.mul_transpose(posOffsetBody);
-            range -= posOffsetEarth.z / prevTnb.c.z;
-        }
-
-        // calculate relative velocity in sensor frame including the relative motion due to rotation
-        relVelSensor = (prevTnb * stateStruct.velocity) + (ofDataDelayed.bodyRadXYZ % posOffsetBody);
-
-        // divide velocity by range  to get predicted angular LOS rates relative to X and Y axes
-        losPred[0] =  relVelSensor.y/range;
-        losPred[1] = -relVelSensor.x/range;
-
-        // define the rotation from body frame to sensor frame
-        const float flow_rot_z = 0.0f;
-        const float flow_rot_y = 0.0f;
-        const float flow_rot_x = 0.0f;
-        Matrix3f Tbs;
-        Tbs.from_euler(flow_rot_x, flow_rot_y, flow_rot_z).transposed();
 
         // calculate observation jacobians and Kalman gains
         memset(&H_LOS[0], 0, sizeof(H_LOS));
@@ -466,8 +468,8 @@ void NavEKF3_core::FuseOptFlow()
             H_LOS[1] = t2*t49;
             H_LOS[2] = t2*t52;
             H_LOS[3] = t2*t55;
-            H_LOS[4] = t2*(t28+t31-Tbs_b_y*(t23-q1*q2*2.0));
-            H_LOS[5] = t2*(t33+t35-Tbs_b_z*(t26-q2*q3*2.0));
+            H_LOS[4] = t2*(t28+t31-Tbs.b.y*(t23-q1*q2*2.0f));
+            H_LOS[5] = t2*(t33+t35-Tbs.b.z*(t26-q2*q3*2.0f));
             H_LOS[6] = t2*t42;
 
             // calculate innovation variance for X axis observation and protect against a badly conditioned calculation
@@ -538,21 +540,21 @@ void NavEKF3_core::FuseOptFlow()
         } else {
 
             float t2 = 1.0f/range;
-            float t3 = Tbs_a_y*q0*2.0f;
-            float t4 = Tbs_a_x*q3*2.0f;
-            float t18 = Tbs_a_z*q1*2.0f;
+            float t3 = Tbs.a.y*q0*2.0f;
+            float t4 = Tbs.a.x*q3*2.0f;
+            float t18 = Tbs.a.z*q1*2.0f;
             float t5 = t3+t4-t18;
-            float t6 = Tbs_a_y*q1*2.0f;
-            float t7 = Tbs_a_z*q0*2.0f;
-            float t16 = Tbs_a_x*q2*2.0f;
+            float t6 = Tbs.a.y*q1*2.0f;
+            float t7 = Tbs.a.z*q0*2.0f;
+            float t16 = Tbs.a.x*q2*2.0f;
             float t8 = t6+t7-t16;
-            float t9 = Tbs_a_x*q0*2.0f;
-            float t10 = Tbs_a_z*q2*2.0f;
-            float t17 = Tbs_a_y*q3*2.0f;
+            float t9 = Tbs.a.x*q0*2.0f;
+            float t10 = Tbs.a.z*q2*2.0f;
+            float t17 = Tbs.a.y*q3*2.0f;
             float t11 = t9+t10-t17;
-            float t12 = Tbs_a_x*q1*2.0f;
-            float t13 = Tbs_a_y*q2*2.0f;
-            float t14 = Tbs_a_z*q3*2.0f;
+            float t12 = Tbs.a.x*q1*2.0f;
+            float t13 = Tbs.a.y*q2*2.0f;
+            float t14 = Tbs.a.z*q3*2.0f;
             float t15 = t12+t13+t14;
             float t19 = q0*q0;
             float t20 = q1*q1;
@@ -563,21 +565,21 @@ void NavEKF3_core::FuseOptFlow()
             float t25 = q1*q3*2.0f;
             float t26 = q0*q1*2.0f;
             float t27 = t19+t20-t21-t22;
-            float t28 = Tbs_a_x*t27;
+            float t28 = Tbs.a.x*t27;
             float t29 = q1*q2*2.0f;
             float t30 = t24+t25;
-            float t31 = Tbs_a_z*t30;
+            float t31 = Tbs.a.z*t30;
             float t32 = t19-t20+t21-t22;
-            float t33 = Tbs_a_y*t32;
+            float t33 = Tbs.a.y*t32;
             float t34 = t23+t29;
-            float t35 = Tbs_a_x*t34;
+            float t35 = Tbs.a.x*t34;
             float t36 = q2*q3*2.0f;
             float t37 = t19-t20-t21+t22;
-            float t38 = Tbs_a_z*t37;
+            float t38 = Tbs.a.z*t37;
             float t39 = t24-t25;
             float t40 = t26+t36;
-            float t41 = Tbs_a_y*t40;
-            float t60 = Tbs_a_x*t39;
+            float t41 = Tbs.a.y*t40;
+            float t60 = Tbs.a.x*t39;
             float t42 = t38+t41-t60;
             float t43 = t8*vd;
             float t44 = t5*ve;
@@ -596,10 +598,10 @@ void NavEKF3_core::FuseOptFlow()
             float t64 = t5*vn;
             float t55 = t53+t54-t64;
             float t56 = t23-t29;
-            float t65 = Tbs_a_y*t56;
+            float t65 = Tbs.a.y*t56;
             float t57 = t28+t31-t65;
             float t58 = t26-t36;
-            float t66 = Tbs_a_z*t58;
+            float t66 = Tbs.a.z*t58;
             float t59 = t33+t35-t66;
             float t61 = P[0][0]*t2*t46;
             float t67 = P[1][1]*t2*t49;
@@ -684,8 +686,8 @@ void NavEKF3_core::FuseOptFlow()
             H_LOS[1] = -t2*t49;
             H_LOS[2] = -t2*t52;
             H_LOS[3] = -t2*t55;
-            H_LOS[4] = -t2*(t28+t31-Tbs_a_y*(t23-q1*q2*2.0));
-            H_LOS[5] = -t2*(t33+t35-Tbs_a_z*(t26-q2*q3*2.0));
+            H_LOS[4] = -t2*(t28+t31-Tbs.a.y*(t23-q1*q2*2.0f));
+            H_LOS[5] = -t2*(t33+t35-Tbs.a.z*(t26-q2*q3*2.0f));
             H_LOS[6] = -t2*t42;
 
             // calculate innovation for Y observation

@@ -31,13 +31,7 @@ const AP_Param::GroupInfo OpticalFlow::var_info[] = {
     // @User: Standard
     AP_GROUPINFO("_FYSCALER", 2,  OpticalFlow,    _flowScalerY,   0),
 
-    // @Param: _ORIENT_YAW
-    // @DisplayName: Flow sensor yaw alignment
-    // @Description: Specifies the number of centi-degrees that the flow sensor is yawed relative to the vehicle. A sensor with its X-axis pointing to the right of the vehicle X axis has a positive yaw angle.
-    // @Range: -18000 +18000
-    // @Increment: 1
-    // @User: Standard
-    AP_GROUPINFO("_ORIENT_YAW", 3,  OpticalFlow,    _yawAngle_cd,   0),
+    // position 3 was previously used for flow sensor yaw and has been deprecated
 
     // @Param: _POS_X
     // @DisplayName:  X position offset
@@ -64,7 +58,31 @@ const AP_Param::GroupInfo OpticalFlow::var_info[] = {
     // @Range: 0 127
     // @User: Advanced
     AP_GROUPINFO("_ADDR", 5,  OpticalFlow, _address,   0),
-    
+
+    // @Param: _EUL_X
+    // @DisplayName: X rotation
+    // @Description: X axis rotation from a ZYX Tait-Bryan rotation sequence describing the orientation of the optical flow sensor frame relative to the autopilot body frame. The flow camera looks out along the Z sensor axis.
+    // @Units: deg
+    // @User: Advanced
+    // @RebootRequired: True
+    AP_GROUPINFO("_EUL_X", 6, OpticalFlow, _rot_x_deg, 0.0f),
+
+    // @Param: _EUL_Y
+    // @DisplayName: Y rotation
+    // @Description: Y axis rotation from a ZYX Tait-Bryan rotation sequence describing the orientation of the optical flow sensor frame relative to the autopilot body frame. The flow camera looks out along the Z sensor axis..
+    // @Units: deg
+    // @User: Advanced
+    // @RebootRequired: True
+    AP_GROUPINFO("_EUL_Y", 7, OpticalFlow, _rot_y_deg, 0.0f),
+
+    // @Param: _EUL_Z
+    // @DisplayName: Z rotation
+    // @Description: Z axis rotation from a ZYX Tait-Bryan rotation sequence describing the orientation of the optical flow sensor frame relative to the autopilot body frame. The flow camera looks out along the Z sensor axis.
+    // @Units: deg
+    // @User: Advanced
+    // @RebootRequired: True
+    AP_GROUPINFO("_EUL_Z", 8, OpticalFlow, _rot_z_deg, 0.0f),
+
     AP_GROUPEND
 };
 
@@ -110,6 +128,11 @@ void OpticalFlow::init(void)
     if (backend != nullptr) {
         backend->init();
     }
+
+    // calculate rotation matrix from body frame to sensor frame
+    _sensor_rotmat.from_euler(radians(_rot_x_deg), radians(_rot_y_deg), radians(_rot_z_deg));
+    _sensor_rotmat = _sensor_rotmat.transposed();
+
 }
 
 void OpticalFlow::update(void)
