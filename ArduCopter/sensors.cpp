@@ -164,9 +164,11 @@ void Copter::update_optical_flow(void)
         uint8_t flowQuality = optflow.quality();
         Vector2f flowRate = optflow.flowRate();
         Vector2f bodyRate = optflow.bodyRate();
+        // find a range finder that is aligned with the sensor Z axis
         const Vector3f &posOffset = optflow.get_pos_offset();
         float range = -1.0f; // set to a negative number if sensor range is not available
-        ahrs.writeOptFlowMeas(flowQuality, flowRate, bodyRate, last_of_update, range, posOffset);
+        const Matrix3f &rotMat = optflow.get_sensor_rotmat();
+        ahrs.writeOptFlowMeas(flowQuality, flowRate, bodyRate, last_of_update, range, posOffset, rotMat);
         if (g.log_bitmask & MASK_LOG_OPTFLOW) {
             Log_Write_Optflow();
         }
