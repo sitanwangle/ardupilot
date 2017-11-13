@@ -490,6 +490,7 @@ private:
         uint32_t    time_ms;        // measurement timestamp (msec)
         Vector3f    bodyRadXYZ;     // body frame XYZ axis angular rates averaged across the optical flow measurement interval (rad/sec)
         const Vector3f *body_offset;// pointer to XYZ position of the optical flow sensor in body frame (m)
+        const Matrix3f *Tbs;        // pointer to rotation matrix defining rotatoin from body to sensor frame
     };
 
     struct vel_odm_elements {
