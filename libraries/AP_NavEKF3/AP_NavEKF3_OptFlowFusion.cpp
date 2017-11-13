@@ -320,12 +320,7 @@ void NavEKF3_core::FuseOptFlow()
     losPred[1] = -relVelSensor.x/range;
 
     // define the rotation from body frame to sensor frame
-    const float flow_rot_z = 0.0f;
-    const float flow_rot_y = 0.0f;
-    const float flow_rot_x = 0.0f;
-    Matrix3f Tbs;
-    Tbs.from_euler(flow_rot_x, flow_rot_y, flow_rot_z);
-    Tbs = Tbs.transposed();
+    Matrix3f Tbs = *ofDataDelayed.Tbs;
 
     // Fuse X and Y axis measurements sequentially assuming observation errors are uncorrelated
     for (uint8_t obsIndex=0; obsIndex<=1; obsIndex++) { // fuse X axis data first

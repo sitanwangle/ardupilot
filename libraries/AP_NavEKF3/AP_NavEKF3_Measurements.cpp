@@ -211,6 +211,8 @@ void NavEKF3_core::writeOptFlowMeas(uint8_t &rawFlowQuality, Vector2f &rawFlowRa
         ofDataNew.flowRadXY = - rawFlowRates; // raw (non motion compensated) optical flow angular rate about the X axis (rad/sec)
         // write the flow sensor position in body frame
         ofDataNew.body_offset = &posOffset;
+        // write the angular orientation of the flow sensor in body frame
+        ofDataNew.Tbs = &rotMat;
         // write flow rate measurements corrected for body rates
         ofDataNew.flowRadXYcomp.x = ofDataNew.flowRadXY.x + ofDataNew.bodyRadXYZ.x;
         ofDataNew.flowRadXYcomp.y = ofDataNew.flowRadXY.y + ofDataNew.bodyRadXYZ.y;
