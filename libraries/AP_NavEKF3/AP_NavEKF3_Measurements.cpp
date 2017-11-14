@@ -213,6 +213,8 @@ void NavEKF3_core::writeOptFlowMeas(uint8_t &rawFlowQuality, Vector2f &rawFlowRa
         ofDataNew.body_offset = &posOffset;
         // write the angular orientation of the flow sensor in body frame
         ofDataNew.Tbs = &rotMat;
+        // write measured range
+        ofDataNew.range = range;
         // write flow rate measurements corrected for body rates
         ofDataNew.flowRadXYcomp.x = ofDataNew.flowRadXY.x + ofDataNew.bodyRadXYZ.x;
         ofDataNew.flowRadXYcomp.y = ofDataNew.flowRadXY.y + ofDataNew.bodyRadXYZ.y;
@@ -220,7 +222,7 @@ void NavEKF3_core::writeOptFlowMeas(uint8_t &rawFlowQuality, Vector2f &rawFlowRa
         flowValidMeaTime_ms = imuSampleTime_ms;
         // estimate sample time of the measurement
         ofDataNew.time_ms = imuSampleTime_ms - frontend->_flowDelay_ms - frontend->flowTimeDeltaAvg_ms/2;
-        // Correct for the average intersampling delay due to the filter updaterate
+        // Correct for the average intersampling delay due to the filter update rate
         ofDataNew.time_ms -= localFilterTimeStep_ms/2;
         // Prevent time delay exceeding age of oldest IMU data in the buffer
         ofDataNew.time_ms = MAX(ofDataNew.time_ms,imuDataDelayed.time_ms);

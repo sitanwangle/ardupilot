@@ -489,6 +489,7 @@ private:
         Vector2f    flowRadXYcomp;  // motion compensated XY optical flow angular rates about the XY body axes (rad/sec)
         uint32_t    time_ms;        // measurement timestamp (msec)
         Vector3f    bodyRadXYZ;     // body frame XYZ axis angular rates averaged across the optical flow measurement interval (rad/sec)
+        float       range;          // distance from sensor focal point to subject measured along sensor Z axis (m)
         const Vector3f *body_offset;// pointer to XYZ position of the optical flow sensor in body frame (m)
         const Matrix3f *Tbs;        // pointer to rotation matrix defining rotatoin from body to sensor frame
     };

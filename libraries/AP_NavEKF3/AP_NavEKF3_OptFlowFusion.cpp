@@ -56,8 +56,10 @@ void NavEKF3_core::SelectFlowFusion()
     // if we do have valid flow measurements, fuse data into a 1-state EKF to estimate terrain height
     // we don't do terrain height estimation in optical flow only mode as the ground becomes our zero height reference
     if ((flowDataToFuse || rangeDataToFuse) && tiltOK) {
-        // fuse optical flow data into the terrain estimator if available and if there is no range data (range data is better)
-        fuseOptFlowData = (flowDataToFuse && !rangeDataToFuse);
+        // fuse optical flow data into the terrain estimator if available, the flow sensor is pointing down and if there is no range data (range data is better)
+        // define the rotation from body frame to sensor frame
+        Matrix3f Tbs = *ofDataDelayed.Tbs;
+        fuseOptFlowData = (flowDataToFuse && (Tbs.c.z > 0.95f) && !rangeDataToFuse);
         // Estimate the terrain offset (runs a one state EKF)
         EstimateTerrainOffset();
     }
@@ -267,7 +269,6 @@ void NavEKF3_core::FuseOptFlow()
 {
     Vector24 H_LOS;
     Vector3f relVelSensor;
-    Vector14 SH_LOS;
     Vector2 losPred;
 
     // Copy required states to local variable names
@@ -280,47 +281,37 @@ void NavEKF3_core::FuseOptFlow()
     float vd = stateStruct.velocity.z;
     float pd = stateStruct.position.z;
 
-    // constrain height above ground to be above range measured on ground
-    float heightAboveGndEst = MAX((terrainState - pd), rngOnGnd);
-    float ptd = pd + heightAboveGndEst;
+    // define the rotation from body frame to sensor frame
+    Matrix3f Tbs = *ofDataDelayed.Tbs;
 
-    // Calculate common expressions for observation jacobians
-    SH_LOS[0] = sq(q0) - sq(q1) - sq(q2) + sq(q3);
-    SH_LOS[1] = vn*(sq(q0) + sq(q1) - sq(q2) - sq(q3)) - vd*(2*q0*q2 - 2*q1*q3) + ve*(2*q0*q3 + 2*q1*q2);
-    SH_LOS[2] = ve*(sq(q0) - sq(q1) + sq(q2) - sq(q3)) + vd*(2*q0*q1 + 2*q2*q3) - vn*(2*q0*q3 - 2*q1*q2);
-    SH_LOS[3] = 1/(pd - ptd);
-    SH_LOS[4] = vd*SH_LOS[0] - ve*(2*q0*q1 - 2*q2*q3) + vn*(2*q0*q2 + 2*q1*q3);
-    SH_LOS[5] = 2.0f*q0*q2 - 2.0f*q1*q3;
-    SH_LOS[6] = 2.0f*q0*q1 + 2.0f*q2*q3;
-    SH_LOS[7] = q0*q0;
-    SH_LOS[8] = q1*q1;
-    SH_LOS[9] = q2*q2;
-    SH_LOS[10] = q3*q3;
-    SH_LOS[11] = q0*q3*2.0f;
-    SH_LOS[12] = pd-ptd;
-    SH_LOS[13] = 1.0f/(SH_LOS[12]*SH_LOS[12]);
-
-    // calculate range from ground plain to centre of sensor fov assuming flat earth
-    float range = constrain_float((heightAboveGndEst/prevTnb.c.z),rngOnGnd,1000.0f);
-
-    // correct range for flow sensor offset body frame position offset
-    // the corrected value is the predicted range from the sensor focal point to the
-    // centre of the image on the ground assuming flat terrain
+    // if using downwards pointing flow sensor calculate range from ground plain to centre of sensor fov assuming flat earth
+    // otherwise use range measurement directly
+    float range;
     Vector3f posOffsetBody = (*ofDataDelayed.body_offset) - accelPosOffset;
-    if (!posOffsetBody.is_zero()) {
-        Vector3f posOffsetEarth = prevTnb.mul_transpose(posOffsetBody);
-        range -= posOffsetEarth.z / prevTnb.c.z;
+    if (Tbs.c.z > 0.95f) {
+        // constrain height above ground to be above range measured on ground
+        float heightAboveGndEst = MAX((terrainState - pd), rngOnGnd);
+        range = constrain_float((heightAboveGndEst/prevTnb.c.z),rngOnGnd,1000.0f);
+        // correct range for flow sensor offset body frame position offset
+        // the corrected value is the predicted range from the sensor focal point to the
+        // centre of the image on the ground assuming flat terrain
+        if (!posOffsetBody.is_zero()) {
+            Vector3f posOffsetEarth = prevTnb.mul_transpose(posOffsetBody);
+            range -= posOffsetEarth.z / prevTnb.c.z;
+        }
+    } else if (ofDataDelayed.range > 0.01f) {
+        range = ofDataDelayed.range;
+    } else {
+        return;
     }
 
-    // calculate relative velocity in sensor frame including the relative motion due to rotation
-    relVelSensor = (prevTnb * stateStruct.velocity) + (ofDataDelayed.bodyRadXYZ % posOffsetBody);
+    // calculate relative velocity in body frame including the relative motion due to rotation
+    // and rotate into sensor frame
+    relVelSensor = Tbs * ((prevTnb * stateStruct.velocity) + (ofDataDelayed.bodyRadXYZ % posOffsetBody));
 
     // divide velocity by range  to get predicted angular LOS rates relative to X and Y axes
     losPred[0] =  relVelSensor.y/range;
     losPred[1] = -relVelSensor.x/range;
-
-    // define the rotation from body frame to sensor frame
-    Matrix3f Tbs = *ofDataDelayed.Tbs;
 
     // Fuse X and Y axis measurements sequentially assuming observation errors are uncorrelated
     for (uint8_t obsIndex=0; obsIndex<=1; obsIndex++) { // fuse X axis data first
