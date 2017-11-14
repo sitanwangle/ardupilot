@@ -27,6 +27,14 @@ void NavEKF3_core::SelectFlowFusion()
     // Check for data at the fusion time horizon
     flowDataToFuse = storedOF.recall(ofDataDelayed, imuDataDelayed.time_ms);
 
+    // Check if the flow sensor is orientated such that it can use the terrain height as a reference
+    if (flowDataToFuse) {
+        // Get the rotation matrix from body frame to sensor frame
+        Matrix3f Tbs = *ofDataDelayed.Tbs;
+        // If the flow sensor is not aligned with the Z body axis then it cannot use the terrain height as a reference
+        flowUseTerrainNo = (Tbs.c.z < 0.95f);
+    }
+
     // Check if the magnetometer has been fused on that time step and the filter is running at faster than 200 Hz
     // If so, don't fuse measurements on this time step to reduce frame over-runs
     // Only allow one time slip to prevent high rate magnetometer data preventing fusion of other measurements
@@ -40,10 +48,13 @@ void NavEKF3_core::SelectFlowFusion()
     // Perform Data Checks
     // Check if the optical flow data is still valid
     flowDataValid = ((imuSampleTime_ms - flowValidMeaTime_ms) < 1000);
+
     // check is the terrain offset estimate is still valid - if we are using range finder as the main height reference, the ground is assumed to be at 0
     gndOffsetValid = ((imuSampleTime_ms - gndHgtValidTime_ms) < 5000) || (activeHgtSource == HGT_SOURCE_RNG);
+
     // Perform tilt check
     bool tiltOK = (prevTnb.c.z > frontend->DCM33FlowMin);
+
     // Constrain measurements to zero if takeoff is not detected and the height above ground
     // is insuffient to achieve acceptable focus. This allows the vehicle to be picked up
     // and carried to test optical flow operation
@@ -56,17 +67,14 @@ void NavEKF3_core::SelectFlowFusion()
     // if we do have valid flow measurements, fuse data into a 1-state EKF to estimate terrain height
     // we don't do terrain height estimation in optical flow only mode as the ground becomes our zero height reference
     if ((flowDataToFuse || rangeDataToFuse) && tiltOK) {
-        // fuse optical flow data into the terrain estimator if available, the flow sensor is pointing down and if there is no range data (range data is better)
-        // define the rotation from body frame to sensor frame
-        Matrix3f Tbs = *ofDataDelayed.Tbs;
-        fuseOptFlowData = (flowDataToFuse && (Tbs.c.z > 0.95f) && !rangeDataToFuse);
+        // fuse optical flow data into the terrain estimator if available, the flow sensor can use the terrain height as a reference and there is no range data (range data is better)
+         fuseOptFlowData = (flowDataToFuse && !flowUseTerrainNo && !rangeDataToFuse);
         // Estimate the terrain offset (runs a one state EKF)
         EstimateTerrainOffset();
     }
 
     // Fuse optical flow data into the main filter
-    if (flowDataToFuse && tiltOK)
-    {
+    if (flowDataToFuse && (tiltOK || flowUseTerrainNo)) {
         // Set the flow noise used by the fusion processes
         R_LOS = sq(MAX(frontend->_flowNoise, 0.05f));
         // Fuse the optical flow X and Y axis data into the main filter sequentially
@@ -281,14 +289,11 @@ void NavEKF3_core::FuseOptFlow()
     float vd = stateStruct.velocity.z;
     float pd = stateStruct.position.z;
 
-    // define the rotation from body frame to sensor frame
-    Matrix3f Tbs = *ofDataDelayed.Tbs;
-
     // if using downwards pointing flow sensor calculate range from ground plain to centre of sensor fov assuming flat earth
     // otherwise use range measurement directly
     float range;
     Vector3f posOffsetBody = (*ofDataDelayed.body_offset) - accelPosOffset;
-    if (Tbs.c.z > 0.95f) {
+    if (!flowUseTerrainNo) {
         // constrain height above ground to be above range measured on ground
         float heightAboveGndEst = MAX((terrainState - pd), rngOnGnd);
         range = constrain_float((heightAboveGndEst/prevTnb.c.z),rngOnGnd,1000.0f);
@@ -304,6 +309,9 @@ void NavEKF3_core::FuseOptFlow()
     } else {
         return;
     }
+
+    // define the rotation from body frame to sensor frame
+    Matrix3f Tbs = *ofDataDelayed.Tbs;
 
     // calculate relative velocity in body frame including the relative motion due to rotation
     // and rotate into sensor frame

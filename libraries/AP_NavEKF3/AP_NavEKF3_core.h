@@ -1015,6 +1015,7 @@ private:
     of_elements ofDataDelayed;      // OF data at the fusion time horizon
     uint8_t ofStoreIndex;           // OF data storage index
     bool flowDataToFuse;            // true when optical flow data has is ready for fusion
+    bool flowUseTerrainNo;          // true when the flow sensor is not using the terrain below the vehicle as a reference
     bool flowDataValid;             // true while optical flow data is still fresh
     bool fuseOptFlowData;           // this boolean causes the last optical flow measurement to be fused
     float auxFlowObsInnov;          // optical flow rate innovation from 1-state terrain offset estimator
