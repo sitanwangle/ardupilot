@@ -269,7 +269,7 @@ void NavEKF3_core::EstimateTerrainOffset()
 
 /*
  * Fuse angular motion compensated optical flow rates using explicit algebraic equations generated with Matlab symbolic toolbox.
- * The script file used to generate these and other equations in this filter can be found here:
+ * The script file used to generate these and other equations in this filter can be found here at commit 1615442:
  * https://github.com/PX4/ecl/blob/master/matlab/scripts/Inertial%20Nav%20EKF/GenerateNavFilterEquations.m
  * Requires a valid terrain height estimate.
 */
@@ -324,7 +324,9 @@ void NavEKF3_core::FuseOptFlow()
         // calculate observation jacobians and Kalman gains
         memset(&H_LOS[0], 0, sizeof(H_LOS));
         if (obsIndex == 0) {
-            // calculate X axis observation Jacobian
+            // calculate X axis observation Jacobian and Kalman gain vectors
+            // code fragments from https://github.com/PX4/ecl/blob/master/matlab/scripts/LOSX.c
+            // at commit 1615442
             float t2 = 1.0f/range;
             float t3 = Tbs_flow.b.y*q0*2.0f;
             float t4 = Tbs_flow.b.x*q3*2.0f;
@@ -529,7 +531,9 @@ void NavEKF3_core::FuseOptFlow()
             }
 
         } else {
-
+            // calculate Y axis observation Jacobian and Kalman gain vectors
+            // code fragments from https://github.com/PX4/ecl/blob/master/matlab/scripts/LOSY.c
+            // at commit 1615442
             float t2 = 1.0f/range;
             float t3 = Tbs_flow.a.y*q0*2.0f;
             float t4 = Tbs_flow.a.x*q3*2.0f;
