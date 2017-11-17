@@ -66,6 +66,7 @@ void NavEKF3_core::SelectPosBcnFusion()
     if (posBcnDataToFuse && (PV_AidingMode == AID_ABSOLUTE) && (posAidSource == POS_AID_BCN)) {
         posMeaNE.x = posDataDelayed.pos.x;
         posMeaNE.y = posDataDelayed.pos.y;
+        posGateSizeSD = MAX(0.01f * (float)frontend->_rngBcnInnovGate, 1.0f);
         posMeaErrVarNE = sq(posDataDelayed.posErr);
         posDownObsNoise = 2.0f * posMeaErrVarNE; // This is a hack - scale up the vertical error to allow for geometric dilution of precision
         fusePosData = true;

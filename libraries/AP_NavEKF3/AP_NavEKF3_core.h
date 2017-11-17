@@ -1052,6 +1052,7 @@ private:
     float innovRng;                 // range finder observation innovation (m)
     float hgtMea;                   // height measurement derived from either baro, gps, range finder or position beacon data (m)
     Vector2f posMeaNE;              // NE position measurement (m)
+    float posGateSizeSD;            // NE position innovaton consistency check gate size SD
     float posMeaErrVarNE;           // observation error variancefor the horizontal position measurement (m**2)
     bool inhibitGndState;           // true when the terrain position state is to remain constant
     uint32_t prevFlowFuseTime_ms;   // time both flow measurement components passed their innovation consistency checks

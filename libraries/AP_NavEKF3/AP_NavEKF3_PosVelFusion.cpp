@@ -276,6 +276,7 @@ void NavEKF3_core::SelectVelPosFusion()
             gpsDataDelayed.hgt += posOffsetEarth.z;
         }
         posMeaNE = gpsDataDelayed.pos;
+        posGateSizeSD = MAX(0.01f * (float)frontend->_gpsPosInnovGate, 1.0f);
 
         // calculate the observation noise required for data fusion
         // Use GPS reported position accuracy if available and floor at value set by GPS position noise parameter
@@ -485,7 +486,7 @@ void NavEKF3_core::FuseVelPosNED()
             varInnovVelPos[3] = P[7][7] + R_OBS_DATA_CHECKS[3];
             varInnovVelPos[4] = P[8][8] + R_OBS_DATA_CHECKS[4];
             // apply an innovation consistency threshold test, but don't fail if bad IMU data
-            float maxPosInnov2 = sq(MAX(0.01f * (float)frontend->_gpsPosInnovGate, 1.0f))*(varInnovVelPos[3] + varInnovVelPos[4]);
+            float maxPosInnov2 = sq(posGateSizeSD)*(varInnovVelPos[3] + varInnovVelPos[4]);
             posTestRatio = (sq(innovVelPos[3]) + sq(innovVelPos[4])) / maxPosInnov2;
             posHealth = ((posTestRatio < 1.0f) || badIMUdata);
             // use position data if healthy or timed out
