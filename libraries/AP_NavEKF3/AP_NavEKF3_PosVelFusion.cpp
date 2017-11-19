@@ -439,7 +439,7 @@ void NavEKF3_core::FuseVelPosNED()
             R_OBS[2] = R_OBS[0];
             R_OBS[3] = R_OBS[0];
             R_OBS[4] = R_OBS[0];
-            for (uint8_t i=0; i<=2; i++) R_OBS_DATA_CHECKS[i] = R_OBS[i];
+
         } else {
             if (gpsSpdAccuracy > 0.0f) {
                 // use GPS receivers reported speed accuracy if available and floor at value set by GPS velocity noise parameter
