@@ -1514,6 +1514,66 @@ void AP_GPS::calc_blended_state(void)
     }
     timing[GPS_BLENDED_INSTANCE].last_fix_time_ms = (uint32_t)temp_time_1;
     timing[GPS_BLENDED_INSTANCE].last_message_time_ms = (uint32_t)temp_time_2;
+
+    // search for a moving baseline RTK receiver pair
+    // search for the index of the RTK rover
+    int8_t rover_index = -1;
+    for (uint8_t i=0; i<GPS_MAX_RECEIVERS; i++) {
+        if (state[i].status == GPS_OK_FIX_3D_RTK_FIXED) {
+            rover_index = i;
+        }
+    }
+
+    // if we find a rover, then look for the moving baseline reference receiver
+    int8_t reference_index = -1;
+    if (rover_index >=0) {
+        for (uint8_t i=0; i<GPS_MAX_RECEIVERS; i++) {
+            if ((i != rover_index) && (state[i].status == GPS_OK_FIX_3D || state[i].status == GPS_OK_FIX_3D_DGPS)) {
+                reference_index = i;
+            }
+        }
+    }
+
+    // if we find a reference receiverm then calculate the yaw angle using the differential position and receiver
+    if (rover_index >= 0) {
+        if (state[rover_index].have_horizontal_accuracy && state[rover_index].horizontal_accuracy > 0.0f) {
+            Vector3f ref_to_rover_bf = _antenna_offset[rover_index];
+            ref_to_rover_bf -= _antenna_offset[reference_index];
+            float base_length_xy = norm(ref_to_rover_bf.x,ref_to_rover_bf.y);
+            if (base_length_xy > 0.0f && state[rover_index].horizontal_accuracy < base_length_xy) {
+                // calcuate the 1-sigma yaw error from the baseline length and relative position uncertainty
+                float yaw_err_rad = asinf(state[rover_index].horizontal_accuracy/base_length_xy);
+                state[rover_index].gps_yaw_err = state[reference_index].gps_yaw_err = state[GPS_BLENDED_INSTANCE].gps_yaw_err = degrees(yaw_err_rad);
+
+                // calcuate the yaw angle from reference to rover antenna and correct for body positioning
+                Vector2f ref_to_rover_ef = location_diff(state[reference_index].location, state[rover_index].location);
+                float yaw_rad = wrap_PI(atan2f(ref_to_rover_ef.y,ref_to_rover_ef.x) - atan2f(ref_to_rover_bf.y,ref_to_rover_bf.x));
+                state[rover_index].gps_yaw = state[reference_index].gps_yaw = state[GPS_BLENDED_INSTANCE].gps_yaw = degrees(yaw_rad);
+
+                // TODO better check algorithm for bad geometry
+                float ref_to_rover_ef_z = 0.01f * (state[reference_index].location.alt - state[rover_index].location.alt);
+                float measured_baseline_length = norm(ref_to_rover_ef.x,ref_to_rover_ef.y,ref_to_rover_ef_z);
+                float ratio = measured_baseline_length / norm(ref_to_rover_bf.x,ref_to_rover_bf.y,ref_to_rover_bf.z);
+
+                // check ratio of measured to specified baseline length
+                if (ratio < 1.5f && ratio > 0.5f) {
+                    state[rover_index].have_gps_yaw = state[reference_index].have_gps_yaw = state[GPS_BLENDED_INSTANCE].have_gps_yaw = true;
+                } else {
+                    state[rover_index].have_gps_yaw = state[reference_index].have_gps_yaw = state[GPS_BLENDED_INSTANCE].have_gps_yaw = false;
+                }
+
+            } else {
+                state[rover_index].gps_yaw_err = state[reference_index].gps_yaw_err = state[GPS_BLENDED_INSTANCE].gps_yaw_err = 0.0f;
+                state[rover_index].gps_yaw = state[reference_index].gps_yaw = state[GPS_BLENDED_INSTANCE].gps_yaw = 0.0f;
+                state[rover_index].have_gps_yaw = state[reference_index].have_gps_yaw = state[GPS_BLENDED_INSTANCE].have_gps_yaw = false;
+            }
+        } else {
+            state[rover_index].gps_yaw_err = state[reference_index].gps_yaw_err = state[GPS_BLENDED_INSTANCE].gps_yaw_err = 0.0f;
+            state[rover_index].gps_yaw = state[reference_index].gps_yaw = state[GPS_BLENDED_INSTANCE].gps_yaw = 0.0f;
+            state[rover_index].have_gps_yaw = state[reference_index].have_gps_yaw = state[GPS_BLENDED_INSTANCE].have_gps_yaw = false;
+        }
+    }
+
 }
 
 bool AP_GPS::is_healthy(uint8_t instance) const {
